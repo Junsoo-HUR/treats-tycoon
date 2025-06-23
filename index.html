@@ -51,7 +51,7 @@
 
         <div class="bg-gray-800 p-4 rounded-xl shadow-lg mb-6 grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
             <div><h2 class="text-sm font-bold text-gray-400">💰 자본금</h2><p id="cash" class="text-2xl font-bold text-green-400">$1,000</p></div>
-            <div><h2 class="text-sm font-bold text-gray-400">📈 월간 총매출 (점수)</h2><p id="total-sales" class="text-2xl font-bold text-blue-400">$0</p></div>
+            <div><h2 class="text-sm font-bold text-gray-400">📈 총매출 (점수)</h2><p id="total-sales" class="text-2xl font-bold text-blue-400">$0</p></div>
             <div><h2 class="text-sm font-bold text-gray-400">🏭 회사 레벨</h2><p id="company-level" class="text-2xl font-bold text-purple-400">1</p></div>
             <div><h2 class="text-sm font-bold text-gray-400">⭐ 최고 평점 레시피</h2><p id="best-recipe-name" class="text-lg font-bold text-yellow-400">-</p></div>
         </div>
@@ -111,7 +111,7 @@
                  <div id="upgrades-container" class="space-y-3 mb-4"></div>
                  
                  <div class="flex-grow flex flex-col min-h-0">
-                    <h3 class="font-bold text-lg mb-3 text-yellow-300">🏆 이달의 리더보드</h3>
+                    <h3 class="font-bold text-lg mb-3 text-yellow-300">🏆 리더보드</h3>
                     <div id="leaderboard" class="bg-gray-900 p-4 rounded-lg flex-grow overflow-y-auto">
                         <div class="text-center text-gray-400">리더보드 로딩 중...</div>
                     </div>
@@ -123,7 +123,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- Firebase 설정 ---
         const firebaseConfig = {
@@ -146,14 +146,13 @@
             db = getFirestore(app);
         } catch (e) {
             console.error(e.message);
-            // 게스트 모드만 활성화하도록 UI 처리
             document.addEventListener('DOMContentLoaded', () => {
                 const loginContainer = document.getElementById('login-container');
                 if (loginContainer) {
                     document.getElementById('login-btn').disabled = true;
                     document.getElementById('signup-btn').disabled = true;
                     const authError = document.getElementById('auth-error');
-                    authError.textContent = "서버 연결 실패. 게스트로만 플레이 가능합니다.";
+                    if(authError) authError.textContent = "서버 연결 실패. 게스트로만 플레이 가능합니다.";
                 }
             });
         }
@@ -182,7 +181,6 @@
             };
         }
         
-        // 인증 및 데이터 로직
         if (auth) {
             onAuthStateChanged(auth, async user => {
                 if (user) {
@@ -239,9 +237,7 @@
                 return;
             }
             if (!db) { gameState = getBaseGameState(); return; }
-            const date = new Date();
-            const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            const userDocRef = doc(db, 'treats-tycoon-players', `${userId}_${yearMonth}`);
+            const userDocRef = doc(db, 'players', userId);
             const docSnap = await getDoc(userDocRef);
             if (docSnap.exists()) {
                 gameState = docSnap.data();
@@ -258,9 +254,7 @@
                 return;
             }
             if (!db) return;
-            const date = new Date();
-            const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-            const userDocRef = doc(db, 'treats-tycoon-players', `${userId}_${yearMonth}`);
+            const userDocRef = doc(db, 'players', userId);
             
             let dataToSave = gameState;
             if(isNewUser) {
@@ -277,7 +271,7 @@
                 return;
             }
             
-            const q = query(collection(db, "treats-tycoon-players"), orderBy("totalSales", "desc"), limit(10));
+            const q = query(collection(db, "players"), orderBy("totalSales", "desc"), limit(10));
 
             unsubscribeLeaderboard = onSnapshot(q, (snapshot) => {
                 const leaderboardHtml = snapshot.docs.map((doc, index) => {
@@ -292,8 +286,6 @@
             });
         }
         
-        // 나머지 모든 게임 로직 함수들은 이전과 동일합니다.
-        // ... (initGame, updateAllUI, updateUpgradesUI, updateRecipeSummary, createAndSellBatch, etc.) ...
         function initGame() {
             dom.flavor_options.innerHTML = FLAVORS.map(f => `<div class="flex items-center bg-gray-700 p-2 rounded"><input type="checkbox" id="flavor-${f.name}" value="${f.name}" class="form-checkbox h-4 w-4 text-indigo-600 bg-gray-800 border-gray-600 rounded focus:ring-indigo-500"><label for="flavor-${f.name}" class="ml-2 text-white text-xs">${f.name}</label></div>`).join('');
             dom.upgrades_container.innerHTML = Object.keys(getBaseGameState().upgrades).map(key => { const upg = getBaseGameState().upgrades[key]; return `<div class="bg-gray-900 p-4 rounded-lg"><div class="flex justify-between items-center mb-2"><h4 class="font-bold">${upg.name} (Lv.<span id="upgrade-${key}-level">0</span>)</h4><p id="upgrade-${key}-desc" class="text-sm text-gray-400"></p></div><button id="upgrade-${key}-btn" data-key="${key}" class="w-full bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg btn">업그레이드: $<span id="upgrade-${key}-cost">${upg.cost}</span></button></div>`; }).join('');
@@ -462,4 +454,3 @@
     </script>
 </body>
 </html>
-
