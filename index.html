@@ -138,16 +138,16 @@
 
         let db, auth;
         try {
-            console.log("Initializing Firebase with config:", firebaseConfig);
-            if (!firebaseConfig.apiKey) {
-                throw new Error("Firebase 설정에 apiKey가 없습니다.");
+            console.log("Firebase 초기화를 시도합니다. 설정값:", firebaseConfig);
+            if (!firebaseConfig || !firebaseConfig.apiKey) {
+                throw new Error("Firebase 설정에 apiKey가 없거나 설정이 비어있습니다.");
             }
             const app = initializeApp(firebaseConfig);
             auth = getAuth(app);
             db = getFirestore(app);
-            console.log("Firebase initialized successfully!");
+            console.log("Firebase 초기화에 성공했습니다!");
         } catch (e) {
-            console.error("Firebase 초기화 중 심각한 오류 발생:", e);
+            console.error("Firebase 초기화 중 심각한 오류가 발생했습니다:", e);
             document.addEventListener('DOMContentLoaded', () => {
                 const loginContainer = document.getElementById('login-container');
                 if (loginContainer) {
