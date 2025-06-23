@@ -125,29 +125,36 @@
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // --- Firebase 설정 ---
-        // Vercel 환경 변수에서 Firebase 설정 값들을 읽어옵니다.
-        const firebaseConfig = {
-            apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-            authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-            projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-            storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-            messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-            appId: import.meta.env.VITE_FIREBASE_APP_ID
-        };
+const firebaseConfig = {
+  apiKey: "AIzaSyCjDwX6xPw3SUee1v1uV82I5knKSC3LFkY",
+  authDomain: "treats-ty.firebaseapp.com",
+  projectId: "treats-ty",
+  storageBucket: "treats-ty.firebasestorage.app",
+  messagingSenderId: "237687562163",
+  appId: "1:237687562163:web:07fa35e6fd8b28950735c6",
+  measurementId: "G-R001G0DS6W"
+};
 
         let db, auth;
-        // 설정 값이 모두 있는지 확인 후 Firebase 초기화
-        if (Object.values(firebaseConfig).every(v => v)) {
-            try {
-                const app = initializeApp(firebaseConfig);
-                auth = getAuth(app);
-                db = getFirestore(app);
-            } catch (e) {
-                console.error("Firebase 초기화 실패:", e);
+        try {
+            if (!firebaseConfig.apiKey) {
+                throw new Error("Firebase 설정이 비어있습니다.");
             }
-        } else {
-            console.warn("Firebase 설정 변수가 없습니다. 게스트 모드로만 작동합니다.");
+            const app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+        } catch (e) {
+            console.error(e.message);
+            // 게스트 모드만 활성화하도록 UI 처리
+            document.addEventListener('DOMContentLoaded', () => {
+                const loginContainer = document.getElementById('login-container');
+                if (loginContainer) {
+                    document.getElementById('login-btn').disabled = true;
+                    document.getElementById('signup-btn').disabled = true;
+                    const authError = document.getElementById('auth-error');
+                    authError.textContent = "서버 연결 실패. 게스트로만 플레이 가능합니다.";
+                }
+            });
         }
 
         const dom = {};
@@ -191,10 +198,6 @@
                     if (unsubscribeLeaderboard) unsubscribeLeaderboard();
                 }
             });
-        } else {
-             dom.login_btn.disabled = true;
-             dom.signup_btn.disabled = true;
-             dom.auth_error.textContent = "Firebase 연결 실패. 게스트로만 플레이 가능합니다.";
         }
         
         async function handleAuth(action) {
