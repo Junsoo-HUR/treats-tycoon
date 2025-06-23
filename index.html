@@ -312,4 +312,165 @@
             ['vg_slider', 'nicotine_slider', 'flavor_strength_slider', 'cooling_slider', 'price_slider'].forEach(key => dom[key].addEventListener('input', updateRecipeSummary));
             dom.create_batch_btn.addEventListener('click', createAndSellBatch);
             dom.flavor_options.addEventListener('change', e => { if (e.target.type === 'checkbox' && getSelectedFlavors().length > 3) e.target.checked = false; });
-            dom.upgrades_container.addEventListener('click', e => { if (e.target.closest('button')?.dataset.key) buyUpgrade(e.targ
+            dom.upgrades_container.addEventListener('click', e => { if (e.target.closest('button')?.dataset.key) buyUpgrade(e.target.closest('button').dataset.key); });
+            updateAllUI();
+            listenToLeaderboard();
+        }
+
+        function updateAllUI() {
+            dom.cash.textContent = `$${Math.round(gameState.cash)}`;
+            dom.total_sales.textContent = `$${Math.round(gameState.totalSales)}`;
+            dom.best_recipe_name.textContent = gameState.bestRecipe.name;
+            const newLevel = Math.floor(Math.log2(gameState.totalSales / 1000 + 1)) + 1;
+            if(newLevel > gameState.companyLevel) { gameState.companyLevel = newLevel; logMessage(`🎉 축하합니다! 회사 레벨이 ${gameState.companyLevel}이 되었습니다!`, 'trend'); }
+            dom.company_level.textContent = gameState.companyLevel;
+            const canAffordBatch = gameState.cash >= BATCH_COST;
+            dom.create_batch_btn.disabled = !canAffordBatch;
+            dom.create_batch_btn.classList.toggle('opacity-50', !canAffordBatch);
+            updateUpgradesUI();
+            updateRecipeSummary();
+        }
+
+        function updateUpgradesUI() {
+            Object.keys(gameState.upgrades).forEach(key => {
+                const upg = gameState.upgrades[key];
+                const baseUpg = getBaseGameState().upgrades[key];
+                document.getElementById(`upgrade-${key}-level`).textContent = upg.level;
+                document.getElementById(`upgrade-${key}-desc`).textContent = `${baseUpg.name.split(" ")[1]} +${Math.round(upg.bonus*100)}%`;
+                const costEl = document.getElementById(`upgrade-${key}-cost`);
+                const btn = document.getElementById(`upgrade-${key}-btn`);
+                if (upg.level >= upg.maxLevel) { btn.disabled = true; costEl.textContent = "MAX"; }
+                else { costEl.textContent = upg.cost; btn.disabled = gameState.cash < upg.cost; }
+                btn.classList.toggle('opacity-50', btn.disabled);
+            });
+            dom.market_trend.innerHTML = gameState.marketTrend.category ? `현재 트렌드: <span class="font-bold text-green-400">${gameState.marketTrend.category}</span> (${gameState.marketTrend.duration}턴 남음)` : '현재 트렌드: 없음';
+        }
+        
+        function updateRecipeSummary() {
+            const values = { vg: parseInt(dom.vg_slider.value), nicotine: parseInt(dom.nicotine_slider.value), flavorStrength: parseInt(dom.flavor_strength_slider.value), cooling: parseInt(dom.cooling_slider.value), price: parseInt(dom.price_slider.value) };
+            values.pg = 100 - values.vg - values.flavorStrength;
+            dom.vg_value.textContent = `${values.vg}%`; dom.nicotine_value.textContent = `${values.nicotine}mg`; dom.flavor_strength_value.textContent = `${values.flavorStrength}%`; dom.cooling_value.textContent = `${values.cooling}`; dom.price_value.textContent = `$${values.price}`;
+            dom.summary_vg.textContent = `${values.vg}%`; dom.summary_flavor.textContent = `${values.flavorStrength}%`; dom.summary_nicotine.textContent = `${values.nicotine}mg`; dom.summary_cooling.textContent = `${values.cooling}`;
+            if (values.pg < 0) { dom.summary_pg.textContent = 'Error!'; dom.summary_pg.classList.add('text-red-500'); dom.create_batch_btn.disabled = true;
+            } else { dom.summary_pg.textContent = `${values.pg}%`; dom.summary_pg.classList.remove('text-red-500'); if(gameState.cash >= BATCH_COST) dom.create_batch_btn.disabled = false; }
+        }
+
+        async function createAndSellBatch() {
+            const selectedFlavors = getSelectedFlavors();
+            const recipeName = dom.recipe_name_input.value;
+            const setPrice = parseInt(dom.price_slider.value);
+            if (selectedFlavors.length === 0 || !recipeName.trim() || gameState.cash < BATCH_COST || (100 - parseInt(dom.vg_slider.value) - parseInt(dom.flavor_strength_slider.value)) < 0) { logMessage('❌ 제조 요건을 확인해주세요.', 'error'); return; }
+            gameState.cash -= BATCH_COST; gameState.batchesMade++;
+
+            const { qualityScore, penaltyMessage } = calculateRecipeQualityScore(selectedFlavors);
+            
+            if (penaltyMessage) {
+                logMessage(`- 제조 실패 -<br>${penaltyMessage}`, 'error');
+                updateAllUI();
+                await saveGameData(currentUser.uid);
+                return;
+            }
+
+            const { totalScore, nameScore, easterEggBonus, qualityText, isEasterEgg } = calculateTotalScore(recipeName, selectedFlavors, qualityScore);
+            
+            const optimalPrice = Math.round(15 + qualityScore * 15);
+            const priceRatio = setPrice / optimalPrice;
+            const salesVolume = Math.round((20 * qualityScore) / Math.pow(priceRatio, 1.5));
+            
+            let revenue = salesVolume * setPrice * (1 + gameState.upgrades.marketing.bonus);
+            const recipeCategories = new Set(selectedFlavors.map(f => f.category));
+            let trendBonusText = '';
+            if(gameState.marketTrend.category && recipeCategories.has(gameState.marketTrend.category)) {
+                revenue *= gameState.marketTrend.bonus;
+                trendBonusText = ` <span class="text-green-300 font-bold">(트렌드 보너스! x${gameState.marketTrend.bonus})</span>`;
+            }
+
+            const profit = revenue - BATCH_COST;
+            gameState.cash += revenue; gameState.totalSales += revenue;
+            
+            let priceFeedback = '';
+            if (priceRatio > 1.2) priceFeedback = '가격이 너무 높았던 것 같습니다.';
+            else if (priceRatio < 0.8) priceFeedback = '가격을 더 높여도 좋았을 것 같습니다.';
+
+            const logHtml = `<div class="bg-gray-700 p-3 rounded-lg border-l-4 ${isEasterEgg ? 'border-yellow-400' : (profit > 0 ? 'border-green-500' : 'border-red-500')}">
+                <p class="font-bold text-lg ${isEasterEgg ? 'text-yellow-300' : ''}">${recipeName}</p>
+                <p class="text-sm ${isEasterEgg ? 'text-yellow-400' : 'text-yellow-300'} mb-1">${qualityText}${trendBonusText}</p>
+                <p class="text-xs text-gray-400">판매: ${salesVolume}개 (개당 $${setPrice}) / 품질: ${Math.round(qualityScore*100)} / 네이밍: ${Math.round(nameScore*100)}</p>
+                <p class="text-sm mt-1">수익: <span class="${profit > 0 ? 'text-green-400' : 'text-red-400'} font-semibold">$${Math.round(profit)}</span> (총매출: $${Math.round(revenue)})</p>
+                ${priceFeedback ? `<p class="text-xs italic text-gray-500 mt-1">${priceFeedback}</p>` : ''}
+            </div>`;
+            logMessage(logHtml, 'game');
+            if (totalScore > gameState.bestRecipe.score) gameState.bestRecipe = { name: recipeName, score: totalScore };
+            checkAndSetMarketTrend(); updateAllUI(); dom.recipe_name_input.value = '';
+            await saveGameData(currentUser.uid);
+        }
+
+        function calculateTotalScore(recipeName, selectedFlavors, qualityScore) {
+            const flavorNames = new Set(selectedFlavors.map(f => f.name)); let isEasterEgg = false, easterEggBonus = 1.0, qualityText = '';
+            const lowerName = recipeName.toLowerCase();
+            if (lowerName.includes('소시오피치') && flavorNames.has('복숭아') && flavorNames.has('자두')) { isEasterEgg = true; easterEggBonus = 1.8; qualityText = "🎉 히든 레시피 발견! [소시오피치]"; }
+            else if (lowerName.includes('고트애플') && flavorNames.has('사과') && flavorNames.has('딸기')) { isEasterEgg = true; easterEggBonus = 1.8; qualityText = "🎉 히든 레시피 발견! [고트애플]"; }
+            const nameScore = calculateNameScore(recipeName, selectedFlavors);
+            const totalScore = qualityScore * nameScore * easterEggBonus;
+            if (!isEasterEgg) {
+                if (totalScore > 1.0) qualityText = "👑 대히트 예감!"; else if (totalScore > 0.8) qualityText = "👍 아주 좋은데요?"; else if (totalScore > 0.6) qualityText = "🤔 나쁘지 않아요."; else qualityText = "😥 개선이 필요해 보입니다...";
+            } return { totalScore, nameScore, easterEggBonus, qualityText, isEasterEgg };
+        }
+
+        function calculateRecipeQualityScore(selectedFlavors) {
+            const values = { nicotine: parseInt(dom.nicotine_slider.value), flavorStrength: parseInt(dom.flavor_strength_slider.value), cooling: parseInt(dom.cooling_slider.value) };
+            if (values.flavorStrength > 25) return { qualityScore: 0, penaltyMessage: "향료가 너무 강해 아무도 찾지 않습니다." };
+            if (values.nicotine > 15) return { qualityScore: 0, penaltyMessage: "니코틴이 너무 강력해 아무도 찾지 않습니다." };
+            if (values.cooling > 8) return { qualityScore: 0, penaltyMessage: "쿨링이 너무 강력해 아무도 찾지 않습니다." };
+            
+            const categories = selectedFlavors.map(f => f.category); let flavorComboScore = 0.5;
+            if (categories.length === 1) flavorComboScore = 1.0;
+            else if (categories.length > 1) { const comboKey = [...new Set(categories)].sort().join('-'); const reverseKey = [...new Set(categories)].sort().reverse().join('-'); flavorComboScore = COMBO_SCORES[comboKey] || COMBO_SCORES[reverseKey] || 0.4; }
+            if (categories.length === 3 && new Set(categories).size === 3) flavorComboScore = 0.3;
+            flavorComboScore *= (1 + gameState.upgrades.flavor_rnd.bonus);
+            values.vg = parseInt(dom.vg_slider.value);
+            const scores = { vg: Math.max(0, 1 - Math.abs(values.vg - 60) / 40), flavorStrength: Math.max(0, 1 - Math.abs(values.flavorStrength - 15) / 15), nicotine: Math.max(0, 1 - Math.abs(values.nicotine - 4.5) / 10), cooling: Math.max(0.3, 1 - Math.abs(values.cooling - 4) / 6) };
+            const finalScore = (flavorComboScore * 0.40) + (scores.vg * 0.20) + (scores.flavorStrength * 0.15) + (scores.nicotine * 0.10) + (scores.cooling * 0.15);
+            return { qualityScore: Math.max(0.1, finalScore * (1 + gameState.upgrades.lab.bonus)), penaltyMessage: null };
+        }
+
+        function calculateNameScore(name, selectedFlavors) {
+            if (!name.trim()) return 0.8; let score = 1.0; let containedFlavors = 0;
+            selectedFlavors.forEach(f => { if (name.toLowerCase().includes(f.name)) containedFlavors++; });
+            if (containedFlavors === selectedFlavors.length && selectedFlavors.length > 0) score += 0.25;
+            else if (containedFlavors > 0) score += 0.1 * containedFlavors;
+            if (name.length > 5 && name.length < 20) score += 0.05;
+            if (selectedFlavors.length === 1 && name.toLowerCase() === selectedFlavors[0].name) score -= 0.1;
+            return Math.min(1.4, Math.max(0.8, score));
+        }
+        function buyUpgrade(key) {
+            const upg = gameState.upgrades[key];
+            if (gameState.cash >= upg.cost && upg.level < upg.maxLevel) {
+                gameState.cash -= upg.cost; upg.level++; upg.bonus += upg.bonusPerLevel;
+                upg.cost = Math.round(upg.baseCost * Math.pow(1.8, upg.level));
+                logMessage(`✅ ${upg.name}을(를) Lv.${upg.level}(으)로 업그레이드했습니다!`, 'system');
+                updateAllUI(); saveGameData(currentUser.uid);
+            }
+        }
+        function checkAndSetMarketTrend() {
+            if (gameState.marketTrend.duration > 0) { gameState.marketTrend.duration--;
+                if (gameState.marketTrend.duration === 0) { gameState.marketTrend.category = null; logMessage('🔔 시장 트렌드가 초기화되었습니다.', 'system'); }
+            } else if (gameState.batchesMade > 0 && gameState.batchesMade % 5 === 0) {
+                const trendCategories = ['과일', '디저트', '멘솔', '음료'];
+                gameState.marketTrend.category = trendCategories[Math.floor(Math.random() * trendCategories.length)];
+                gameState.marketTrend.duration = 5;
+                logMessage(`🔔 시장 뉴스: 지금은 '${gameState.marketTrend.category}' 계열이 대유행! (x${gameState.marketTrend.bonus} 보너스)`, 'trend');
+            }
+        }
+        function getSelectedFlavors() { const selected = []; dom.flavor_options.querySelectorAll('input:checked').forEach(cb => { const flavor = FLAVORS.find(f => f.name === cb.value); if(flavor) selected.push(flavor); }); return selected; }
+        function logMessage(message, type = 'info') {
+            if (dom.log.firstElementChild?.textContent.includes('표시됩니다')) dom.log.innerHTML = '';
+            const div = document.createElement('div');
+            const typeClasses = { game: '', error: 'text-red-400 font-bold p-2 text-center', system: 'text-blue-300 italic p-2 text-center', trend: 'text-yellow-300 font-bold p-2 text-center bg-yellow-900/50 rounded-lg' };
+            if (type === 'game') div.innerHTML = message;
+            else { div.textContent = message; div.className = typeClasses[type] || 'text-gray-400'; }
+            dom.log.prepend(div);
+        }
+    </script>
+</body>
+</html>
