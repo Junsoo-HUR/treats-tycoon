@@ -154,7 +154,7 @@
                     document.getElementById('login-btn').disabled = true;
                     document.getElementById('signup-btn').disabled = true;
                     const authError = document.getElementById('auth-error');
-                    if(authError) authError.textContent = "서버 연결 실패. 게스트로만 플레이 가능합니다.";
+                    if(authError) authError.textContent = `서버 연결 실패: ${e.code || e.message}`;
                 }
             });
         }
