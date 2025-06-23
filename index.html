@@ -35,7 +35,6 @@
             <div class="mt-4">
                  <button id="guest-login-btn" class="w-full bg-gray-600 text-white font-bold py-3 px-4 rounded-lg btn">게스트로 플레이하기</button>
             </div>
-             <p class="text-xs text-gray-500 mt-4 text-center">참고: 로그인/회원가입은 실제 서버에<br>배포된 후에만 정상적으로 작동합니다.</p>
         </div>
     </div>
     
@@ -124,17 +123,31 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot, where } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- Firebase 설정 ---
+        // Vercel 환경 변수에서 Firebase 설정 값들을 읽어옵니다.
+        const firebaseConfig = {
+            apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+            authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+            projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+            storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+            messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+            appId: import.meta.env.VITE_FIREBASE_APP_ID
+        };
 
         let db, auth;
-        try {
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'treats-tycoon-local';
-            const firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : '{}');
-            const app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-        } catch (e) {
-            console.warn("Firebase 초기화 실패. 오프라인 모드로만 작동합니다.");
+        // 설정 값이 모두 있는지 확인 후 Firebase 초기화
+        if (Object.values(firebaseConfig).every(v => v)) {
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+            } catch (e) {
+                console.error("Firebase 초기화 실패:", e);
+            }
+        } else {
+            console.warn("Firebase 설정 변수가 없습니다. 게스트 모드로만 작동합니다.");
         }
 
         const dom = {};
@@ -150,7 +163,7 @@
 
         function getBaseGameState() {
             return {
-                cash: 1000, totalSales: 0, companyLevel: 1, batchesMade: 0,
+                email: '', cash: 1000, totalSales: 0, companyLevel: 1, batchesMade: 0,
                 bestRecipe: { name: '-', score: 0 },
                 upgrades: {
                     lab: { level: 0, cost: 250, baseCost: 250, bonus: 0, bonusPerLevel: 0.01, maxLevel: 10, name: "🔬 연구실 확장" },
@@ -160,7 +173,8 @@
                 marketTrend: { category: null, duration: 0, bonus: 1.5 }
             };
         }
-
+        
+        // 인증 및 데이터 로직
         if (auth) {
             onAuthStateChanged(auth, async user => {
                 if (user) {
@@ -177,6 +191,10 @@
                     if (unsubscribeLeaderboard) unsubscribeLeaderboard();
                 }
             });
+        } else {
+             dom.login_btn.disabled = true;
+             dom.signup_btn.disabled = true;
+             dom.auth_error.textContent = "Firebase 연결 실패. 게스트로만 플레이 가능합니다.";
         }
         
         async function handleAuth(action) {
@@ -185,8 +203,12 @@
             const password = dom.password_input.value;
             dom.auth_error.textContent = '';
             try {
-                if (action === 'login') await signInWithEmailAndPassword(auth, email, password);
-                else await createUserWithEmailAndPassword(auth, email, password);
+                if (action === 'login') {
+                    await signInWithEmailAndPassword(auth, email, password);
+                } else {
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    await saveGameData(userCredential.user.uid, true);
+                }
             } catch (error) {
                 dom.auth_error.textContent = "이메일 또는 비밀번호를 확인하세요.";
             }
@@ -206,20 +228,43 @@
             else { currentUser = null; dom.login_container.classList.remove('hidden'); dom.game_container.classList.add('hidden'); }
         });
 
-        function loadGameData(userId) {
+        async function loadGameData(userId) {
             if (userId === 'guest') {
                 const savedData = localStorage.getItem('treats-tycoon-guest-save');
                 gameState = savedData ? JSON.parse(savedData) : getBaseGameState();
                 return;
             }
+            if (!db) { gameState = getBaseGameState(); return; }
+            const date = new Date();
+            const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const userDocRef = doc(db, 'treats-tycoon-players', `${userId}_${yearMonth}`);
+            const docSnap = await getDoc(userDocRef);
+            if (docSnap.exists()) {
+                gameState = docSnap.data();
+            } else {
+                gameState = getBaseGameState();
+                gameState.email = currentUser.email;
+            }
         }
 
-        async function saveGameData(userId) {
+        async function saveGameData(userId, isNewUser = false) {
             if (!userId) return;
             if (userId === 'guest') {
                 localStorage.setItem('treats-tycoon-guest-save', JSON.stringify(gameState));
                 return;
             }
+            if (!db) return;
+            const date = new Date();
+            const yearMonth = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+            const userDocRef = doc(db, 'treats-tycoon-players', `${userId}_${yearMonth}`);
+            
+            let dataToSave = gameState;
+            if(isNewUser) {
+                dataToSave = getBaseGameState();
+                dataToSave.email = currentUser.email;
+            }
+            
+            await setDoc(userDocRef, { ...dataToSave, uid: userId }, { merge: true });
         }
         
         function listenToLeaderboard() {
@@ -227,8 +272,24 @@
                 dom.leaderboard.innerHTML = '<p class="text-center text-gray-400 p-4">리더보드는<br>이메일로 로그인 후<br>이용 가능합니다.</p>';
                 return;
             }
-        }
+            
+            const q = query(collection(db, "treats-tycoon-players"), orderBy("totalSales", "desc"), limit(10));
 
+            unsubscribeLeaderboard = onSnapshot(q, (snapshot) => {
+                const leaderboardHtml = snapshot.docs.map((doc, index) => {
+                    const data = doc.data();
+                    const isCurrentUser = data.uid === currentUser?.uid;
+                    return `<div class="flex justify-between items-center p-2 rounded ${isCurrentUser ? 'bg-indigo-500' : ''}"><div class="flex items-center"><span class="font-bold w-6">${index + 1}.</span><span class="truncate">${data.email || '익명'}</span></div><span class="font-bold text-green-400">$${Math.round(data.totalSales || 0)}</span></div>`;
+                }).join('');
+                dom.leaderboard.innerHTML = leaderboardHtml || '<p class="text-center text-gray-400">아직 순위가 없습니다.</p>';
+            }, (error) => {
+                console.error("리더보드 로딩 실패:", error);
+                dom.leaderboard.innerHTML = '<p class="text-center text-red-400">리더보드를 불러오는 데 실패했습니다. 데이터베이스 규칙을 확인하세요.</p>';
+            });
+        }
+        
+        // 나머지 모든 게임 로직 함수들은 이전과 동일합니다.
+        // ... (initGame, updateAllUI, updateUpgradesUI, updateRecipeSummary, createAndSellBatch, etc.) ...
         function initGame() {
             dom.flavor_options.innerHTML = FLAVORS.map(f => `<div class="flex items-center bg-gray-700 p-2 rounded"><input type="checkbox" id="flavor-${f.name}" value="${f.name}" class="form-checkbox h-4 w-4 text-indigo-600 bg-gray-800 border-gray-600 rounded focus:ring-indigo-500"><label for="flavor-${f.name}" class="ml-2 text-white text-xs">${f.name}</label></div>`).join('');
             dom.upgrades_container.innerHTML = Object.keys(getBaseGameState().upgrades).map(key => { const upg = getBaseGameState().upgrades[key]; return `<div class="bg-gray-900 p-4 rounded-lg"><div class="flex justify-between items-center mb-2"><h4 class="font-bold">${upg.name} (Lv.<span id="upgrade-${key}-level">0</span>)</h4><p id="upgrade-${key}-desc" class="text-sm text-gray-400"></p></div><button id="upgrade-${key}-btn" data-key="${key}" class="w-full bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg btn">업그레이드: $<span id="upgrade-${key}-cost">${upg.cost}</span></button></div>`; }).join('');
@@ -296,7 +357,7 @@
 
             const { totalScore, nameScore, easterEggBonus, qualityText, isEasterEgg } = calculateTotalScore(recipeName, selectedFlavors, qualityScore);
             
-            const optimalPrice = Math.round(15 + qualityScore * 15); // $15 ~ $30
+            const optimalPrice = Math.round(15 + qualityScore * 15);
             const priceRatio = setPrice / optimalPrice;
             const salesVolume = Math.round((20 * qualityScore) / Math.pow(priceRatio, 1.5));
             
