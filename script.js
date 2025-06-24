@@ -279,7 +279,7 @@ function updateAllUI() {
     dom.monthly_sales.textContent = `$${Math.round(gameState.monthlySales)}`;
     dom.best_recipe_name.textContent = gameState.bestRecipe.name;
     const skillLevel = Math.floor(Math.log10(gameState.skillExp / 100 + 1)) + 1;
-    gameState.companyLevel = Math.floor(Math.log2( (gameState.cash + gameState.monthlySales * 10) / 1000 + 1)) + 1; // 월간매출 가중치 적용
+    gameState.companyLevel = Math.floor(Math.log2( (gameState.cash + gameState.monthlySales * 10) / 1000 + 1)) + 1;
     dom.company_level.textContent = gameState.companyLevel;
     dom.skill_level.textContent = `Lv.${skillLevel}`;
     renderUpgrades();
@@ -522,7 +522,7 @@ function renderGuideContent() {
     if (!dom.guide_content) return;
     dom.guide_content.innerHTML = `
         <h3>게임 목표</h3>
-        <p>당신의 목표는 최고의 액상을 만들어 돈을 벌고, 회사를 성장시켜 '리더보드' 1위에 오르는 것입니다. 매월말 리더보드 1위는 가입된 메일주소로 트리츠의 액상이 증정됩니다. 맛, 시장 트렌드, 그리고 당신의 '제조 기술'까지 모든 것이 완벽해야 합니다.</p>
+        <p>당신의 목표는 최고의 액상을 만들어 돈을 벌고, 회사를 성장시켜 '리더보드' 1위에 오르는 것입니다. 매월말일 리더보드 1위는 가입 메일주소로 트리츠 액상이 증정됩니다. 맛, 시장 트렌드, 그리고 당신의 '제조 기술'까지 모든 것이 완벽해야 합니다.</p>
         <h3>게임 규칙</h3>
         <ul>
             <li><strong>일일 제조 제한:</strong> 공정한 경쟁을 위해, 하루에 액상은 최대 <strong>20번</strong>까지만 제조할 수 있습니다. 이 횟수는 매일 자정(한국 시간 기준)에 초기화됩니다.</li>
