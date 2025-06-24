@@ -357,6 +357,21 @@ async function createAndSellBatch() {
         logMessage(`- 제조 실패 -<br>${penaltyMessage}`, 'error');
         updateAllUI();
         await saveGameData(currentUser.uid);
+      
+// 여기에 아래 코드 블록 전체를 추가하세요
+// --- 다음 레시피를 위해 제조기 상태 초기화 ---
+delete gameState.recipe;
+tempSelectedFlavors = [];
+updateSelectedFlavorsDisplay();
+showRecipeCreationSteps();
+dom.recipe_name_input.value = '';
+// 슬라이더 및 비용 UI 기본값으로 리셋
+dom.vg_slider.value = 50;
+dom.nicotine_slider.value = 3;
+dom.cooling_slider.value = 0;
+dom.price_slider.value = 20;
+dom.manufacture_cost.textContent = '$0';
+// --- 초기화 끝 ---
         return;
     }
 
