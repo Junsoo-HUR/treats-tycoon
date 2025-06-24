@@ -31,11 +31,68 @@ ids.forEach(id => {
 });
 
 const FLAVORS = [
-    { name: '딸기', category: '과일', icon: '🍓' }, { name: '바나나', category: '과일', icon: '🍌' }, { name: '블루베리', category: '과일', icon: '🫐' }, { name: '망고', category: '과일', icon: '🥭' }, { name: '레몬', category: '과일', icon: '🍋' }, { name: '라임', category: '과일', icon: '🍈' }, { name: '사과', category: '과일', icon: '🍎' }, { name: '복숭아', category: '과일', icon: '🍑' }, { name: '자두', category: '과일', icon: '🟣' }, { name: '파인애플', category: '과일', icon: '🍍' }, { name: '포도', category: '과일', icon: '🍇' },
-    { name: '바닐라', category: '디저트', icon: '🍦' }, { name: '커스타드', category: '디저트', icon: '🍮' }, { name: '치즈케이크', category: '디저트', icon: '🍰' }, { name: '초콜릿', category: '디저트', icon: '🍫' }, { name: '카라멜', category: '디저트', icon: '🍬' }, { name: '요거트', category: '디저트', icon: '🥛' },
-    { name: '연초', category: '연초', icon: '🚬' }, { name: '시가', category: '연초', icon: '💨' },
-    { name: '멘솔', category: '멘솔', icon: '❄️' }, { name: '스피어민트', category: '멘솔', icon: '🍃' },
-    { name: '커피', category: '음료', icon: '☕' }, { name: '콜라', category: '음료', icon: '🥤' }
+     // --- 과일 계열 ---
+    { name: '딸기', category: '과일', icon: '🍓' }, 
+    { name: '바나나', category: '과일', icon: '🍌' }, 
+    { name: '블루베리', category: '과일', icon: '🫐' },
+    { name: '망고', category: '과일', icon: '🥭' }, 
+    { name: '레몬', category: '과일', icon: '🍋' }, 
+    { name: '라임', category: '과일', icon: '🍈' }, 
+    { name: '사과', category: '과일', icon: '🍎' }, 
+    { name: '복숭아', category: '과일', icon: '🍑' }, 
+    { name: '자두', category: '과일', icon: '🟣' }, 
+    { name: '파인애플', category: '과일', icon: '🍍' }, 
+    { name: '포도', category: '과일', icon: '🍇' }, 
+    { name: '자몽', category: '과일', icon: '🍊' }, 
+    { name: '수박', category: '과일', icon: '🍉' }, 
+    { name: '멜론', category: '과일', icon: '🍈' }, 
+    { name: '리치', category: '과일', icon: '🥥' }, 
+    { name: '체리', category: '과일', icon: '🍒' },
+    { name: '키위', category: '과일', icon: '🥝' },
+    { name: '알로에', category: '과일', icon: '🪴' },
+    { name: '구아바', category: '과일', icon: '🥑' },
+    { name: '패션후르츠', category: '과일', icon: '🥭' },
+    { name: '시르삭', category: '과일', icon: '🍈' }, // 신규 추가
+
+    // --- 디저트 계열 ---
+    { name: '바닐라', category: '디저트', icon: '🍦' }, 
+    { name: '커스타드', category: '디저트', icon: '🍮' }, 
+    { name: '치즈케이크', category: '디저트', icon: '🍰' }, 
+    { name: '초콜릿', category: '디저트', icon: '🍫' }, 
+    { name: '카라멜', category: '디저트', icon: '🍬' }, 
+    { name: '요거트', category: '디저트', icon: '🥛' },
+    { name: '애플파이', category: '디저트', icon: '🥧' }, 
+    { name: '도넛', category: '디저트', icon: '🍩' }, 
+    { name: '쿠키앤크림', category: '디저트', icon: '🍪' },
+    { name: '솜사탕', category: '디저트', icon: '☁️' },
+    { name: '버터스카치', category: '디저트', icon: '🧈' },
+
+    // --- 연초 계열 ---
+    { name: '연초', category: '연초', icon: '🚬' }, 
+    { name: '시가', category: '연초', icon: '💨' },
+    { name: 'RY4', category: '연초', icon: '🍂' },
+    { name: '쿠바 시가', category: '연초', icon: '🇨🇺' }, // 신규 추가
+    { name: '파이프 연초', category: '연초', icon: '📜' }, // 신규 추가
+    { name: '크림 연초', category: '연초', icon: '🍮' }, // 신규 추가
+
+    // --- 멘솔/민트 계열 ---
+    { name: '멘솔', category: '멘솔', icon: '❄️' }, 
+    { name: '스피어민트', category: '멘솔', icon: '🍃' },
+    { name: '페퍼민트', category: '멘솔', icon: '🌿' },
+
+    // --- 음료 계열 ---
+    { name: '커피', category: '음료', icon: '☕' }, 
+    { name: '콜라', category: '음료', icon: '🥤' },
+    { name: '에너지드링크', category: '음료', icon: '⚡' },
+    { name: '레몬에이드', category: '음료', icon: '🍹' },
+    { name: '밀크티', category: '음료', icon: '🧋' },
+    { name: '피나콜라다', category: '음료', icon: '🍍' },
+
+    // --- 특별 향료 ---
+    { name: '꿀', category: '특별', icon: '🍯' }, 
+    { name: '시나몬', category: '특별', icon: '🪵' },
+    { name: '장미', category: '특별', icon: '🌹' },
+    { name: '헤이즐넛', category: '특별', icon: '🌰' },
 ];
 
 const SYNERGY_SCORES = { '딸기-바나나': 1.2, '딸기-요거트': 1.15, '망고-파인애플': 1.1, '레몬-라임': 1.2, '복숭아-요거트': 1.25, '블루베리-치즈케이크': 1.3, '연초-카라멜': 1.1, '연초-바닐라': 1.15, '커피-시가': 1.2, '초콜릿-스피어민트': 1.1, '사과-멘솔': 1.1 };
