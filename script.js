@@ -184,8 +184,11 @@ function addEventListeners() {
     dom.confirm_flavor_selection_btn.addEventListener('click', confirmFlavorSelection);
     dom.open_leaderboard_popup_btn.addEventListener('click', () => dom.leaderboard_popup.classList.replace('hidden', 'flex'));
     dom.close_leaderboard_popup_btn.addEventListener('click', () => dom.leaderboard_popup.classList.replace('flex', 'hidden'));
+    
+    // 여기에 아래 두 줄을 추가하세요!
     dom.open_guide_popup_btn.addEventListener('click', () => dom.guide_popup.classList.replace('hidden', 'flex'));
     dom.close_guide_popup_btn.addEventListener('click', () => dom.guide_popup.classList.replace('flex', 'hidden'));
+
     ['vg_slider', 'nicotine_slider', 'cooling_slider', 'price_slider'].forEach(key => dom[key].addEventListener('input', updateRecipeAndCost));
     dom.create_batch_btn.addEventListener('click', createAndSellBatch);
     dom.upgrades_container.addEventListener('click', e => { if (e.target.closest('button')?.dataset.key) buyUpgrade(e.target.closest('button').dataset.key); });
