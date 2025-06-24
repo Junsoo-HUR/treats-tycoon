@@ -57,7 +57,9 @@ function getBaseGameState() {
             flavor_rnd: { level: 0, cost: 1000, baseCost: 1000, bonus: 0, bonusPerLevel: 0.02, maxLevel: 5, name: "⚗️ 향료 R&D" }
         },
         marketTrend: { category: null, duration: 0, bonus: 1.5 },
-        lastLoginMonth: new Date().getMonth()
+        lastLoginMonth: new Date().getMonth(),
+        dailyManufactureCount: 0,
+        lastManufactureDate: new Date().toLocaleDateString('ko-KR')
     };
 }
 if (auth) {
@@ -136,6 +138,11 @@ async function loadGameData(userId) {
             gameState = getBaseGameState();
             gameState.email = currentUser.email;
         }
+    }
+    const today = new Date().toLocaleDateString('ko-KR');
+    if (gameState.lastManufactureDate !== today) {
+        gameState.dailyManufactureCount = 0;
+        gameState.lastManufactureDate = today;
     }
     if (!gameState.skillExp) gameState.skillExp = 0;
 }
@@ -276,6 +283,7 @@ function updateAllUI() {
     dom.company_level.textContent = gameState.companyLevel;
     dom.skill_level.textContent = `Lv.${skillLevel}`;
     renderUpgrades();
+    updateManufactureButton();
 }
 function renderUpgrades() {
     dom.upgrades_container.innerHTML = Object.keys(gameState.upgrades).map(key => {
@@ -329,13 +337,18 @@ function updateRecipeAndCost() {
     dom.create_batch_btn.disabled = values.pg < 0;
 }
 async function createAndSellBatch() {
+    if (gameState.dailyManufactureCount >= 20) {
+        logMessage('하루 최대 제조 횟수(20회)에 도달했습니다. 내일 다시 시도해주세요.', 'error');
+        return;
+    }
     const manufactureCost = parseFloat(dom.manufacture_cost.textContent.replace('$', ''));
     if (gameState.cash < manufactureCost) {
         logMessage('❌ 자본금이 부족하여 제조할 수 없습니다.', 'error'); return;
     }
     const recipeName = dom.recipe_name_input.value;
      if (!recipeName.trim()) { logMessage('❌ 액상 이름을 지어주세요!', 'error'); return; }
-
+    
+    gameState.dailyManufactureCount++;
     gameState.cash -= manufactureCost;
     
     const { qualityScore, penaltyMessage, throatHitScore } = calculateRecipeQualityScore();
@@ -509,7 +522,12 @@ function renderGuideContent() {
     if (!dom.guide_content) return;
     dom.guide_content.innerHTML = `
         <h3>게임 목표</h3>
-        <p>당신의 목표는 최고의 액상을 만들어 돈을 벌고, 회사를 성장시켜 '리더보드' 1위에 오르는 것입니다. 매월 말 리더보드 1위는 기입한 메일주소로 트리츠 액상이 무료로 증정됩니다. 맛, 시장 트렌드, 그리고 당신의 '제조 기술'까지 모든 것이 완벽해야 합니다.</p>
+        <p>당신의 목표는 최고의 액상을 만들어 돈을 벌고, 회사를 성장시켜 '리더보드' 1위에 오르는 것입니다. 매월말 리더보드 1위는 가입된 메일주소로 트리츠의 액상이 증정됩니다. 맛, 시장 트렌드, 그리고 당신의 '제조 기술'까지 모든 것이 완벽해야 합니다.</p>
+        <h3>게임 규칙</h3>
+        <ul>
+            <li><strong>일일 제조 제한:</strong> 공정한 경쟁을 위해, 하루에 액상은 최대 <strong>20번</strong>까지만 제조할 수 있습니다. 이 횟수는 매일 자정(한국 시간 기준)에 초기화됩니다.</li>
+            <li><strong>월간 리더보드:</strong> 리더보드 순위는 '월간 매출'을 기준으로 매겨지며, 매월 1일 자정에 초기화됩니다.</li>
+        </ul>
         <h3>액상 제조법</h3>
         <p>1. <strong>향료 선택:</strong> 최대 5개의 향료를 조합하세요. 향료 아이콘으로 카테고리를 확인할 수 있습니다.</p>
         <p>2. <strong>비율 조절:</strong> 선택한 향료 각각의 농도를 개별적으로 조절하여 레시피의 핵심 맛을 설계하세요. VG, 니코틴, 쿨링으로 액상의 특징을 완성합니다.</p>
