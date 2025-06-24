@@ -130,9 +130,12 @@ async function loadGameData(userId) {
             gameState = docSnap.data();
             const currentMonth = new Date().getMonth();
             if (gameState.lastLoginMonth !== currentMonth) {
-                gameState.monthlySales = 0;
+                // 월간 초기화 로직
+                logMessage('새로운 달이 시작되었습니다! 월간 매출과 회사 업그레이드가 초기화됩니다. 새로운 시즌을 시작하세요!', 'system');
+                const newSeasonState = getBaseGameState();
+                gameState.monthlySales = newSeasonState.monthlySales;
+                gameState.upgrades = newSeasonState.upgrades;
                 gameState.lastLoginMonth = currentMonth;
-                logMessage('이달의 첫 접속입니다! 월간 매출이 초기화되었습니다.', 'system');
             }
         } else {
             gameState = getBaseGameState();
@@ -157,7 +160,6 @@ async function saveGameData(userId, isNewUser = false) {
     let dataToSave = isNewUser ? { ...getBaseGameState(), email: currentUser.email, uid: userId } : { ...gameState, uid: userId };
     await setDoc(userDocRef, dataToSave, { merge: true });
 }
-
 function listenToLeaderboard() {
     if (!db || (currentUser && currentUser.isAnonymous)) {
         dom.leaderboard_content.innerHTML = '<p class="text-center text-gray-400 p-4">리더보드는<br>이메일로 로그인 후<br>이용 가능합니다.</p>';
@@ -234,7 +236,7 @@ function confirmFlavorSelection() {
         flavorRatios: {}
     };
     tempSelectedFlavors.forEach(name => {
-        gameState.recipe.flavorRatios[name] = 5;
+        gameState.recipe.flavorRatios[name] = 5; // 기본값 5%
     });
     dom.flavor_popup.classList.replace('flex', 'hidden');
     updateSelectedFlavorsDisplay();
@@ -271,13 +273,12 @@ function showRecipeCreationSteps() {
     dom.summary_section.classList.toggle('hidden', !show);
     dom.create_batch_btn.disabled = !show;
 }
-
 function updateAllUI() {
     dom.cash.textContent = `$${Math.round(gameState.cash)}`;
     dom.monthly_sales.textContent = `$${Math.round(gameState.monthlySales)}`;
     dom.best_recipe_name.textContent = gameState.bestRecipe.name;
     const skillLevel = Math.floor(Math.log10(gameState.skillExp / 100 + 1)) + 1;
-    gameState.companyLevel = Math.floor(Math.log2( (gameState.cash + gameState.monthlySales * 10) / 1000 + 1)) + 1;
+    gameState.companyLevel = Math.floor(Math.log2( (gameState.cash + gameState.monthlySales * 10) / 1000 + 1)) + 1; // 월간매출 가중치 적용
     dom.company_level.textContent = gameState.companyLevel;
     dom.skill_level.textContent = `Lv.${skillLevel}`;
     renderUpgrades();
@@ -531,7 +532,7 @@ function renderGuideContent() {
     if (!dom.guide_content) return;
     dom.guide_content.innerHTML = `
         <h3>게임 목표</h3>
-        <p>당신의 목표는 최고의 액상을 만들어 돈을 벌고, 회사를 성장시켜 '리더보드' 1위에 오르는 것입니다. 매월 말일 리더보드 1위의 메일로 트리츠 액상이 증정됩니다. 맛, 시장 트렌드, 그리고 당신의 '제조 기술'까지 모든 것이 완벽해야 합니다.</p>
+        <p>당신의 목표는 최고의 액상을 만들어 돈을 벌고, 회사를 성장시켜 '리더보드' 1위에 오르는 것입니다. 맛, 시장 트렌드, 그리고 당신의 '제조 기술'까지 모든 것이 완벽해야 합니다.</p>
         <h3>게임 규칙</h3>
         <ul>
             <li><strong>일일 제조 제한:</strong> 공정한 경쟁을 위해, 하루에 액상은 최대 <strong>20번</strong>까지만 제조할 수 있습니다. 이 횟수는 매일 자정(한국 시간 기준)에 초기화됩니다.</li>
