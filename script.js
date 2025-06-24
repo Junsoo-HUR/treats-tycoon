@@ -279,7 +279,7 @@ function updateAllUI() {
     dom.monthly_sales.textContent = `$${Math.round(gameState.monthlySales)}`;
     dom.best_recipe_name.textContent = gameState.bestRecipe.name;
     const skillLevel = Math.floor(Math.log10(gameState.skillExp / 100 + 1)) + 1;
-    gameState.companyLevel = Math.floor(Math.log2( (gameState.cash + gameState.monthlySales * 10) / 1000 + 1)) + 1;
+    gameState.companyLevel = Math.floor(Math.log2( (gameState.cash + gameState.monthlySales * 10) / 1000 + 1)) + 1; // 월간매출 가중치 적용
     dom.company_level.textContent = gameState.companyLevel;
     dom.skill_level.textContent = `Lv.${skillLevel}`;
     renderUpgrades();
@@ -335,6 +335,7 @@ function updateRecipeAndCost() {
     const cost = 10 + (gameState.recipe.selectedFlavors.length * 5) + (values.nicotine * 0.5) + (values.cooling * 0.5) + (totalFlavorPerc * 0.2);
     dom.manufacture_cost.textContent = `$${Math.round(cost)}`;
     dom.create_batch_btn.disabled = values.pg < 0;
+    updateManufactureButton();
 }
 async function createAndSellBatch() {
     if (gameState.dailyManufactureCount >= 20) {
@@ -357,21 +358,6 @@ async function createAndSellBatch() {
         logMessage(`- 제조 실패 -<br>${penaltyMessage}`, 'error');
         updateAllUI();
         await saveGameData(currentUser.uid);
-      
-// 여기에 아래 코드 블록 전체를 추가하세요
-// --- 다음 레시피를 위해 제조기 상태 초기화 ---
-delete gameState.recipe;
-tempSelectedFlavors = [];
-updateSelectedFlavorsDisplay();
-showRecipeCreationSteps();
-dom.recipe_name_input.value = '';
-// 슬라이더 및 비용 UI 기본값으로 리셋
-dom.vg_slider.value = 50;
-dom.nicotine_slider.value = 3;
-dom.cooling_slider.value = 0;
-dom.price_slider.value = 20;
-dom.manufacture_cost.textContent = '$0';
-// --- 초기화 끝 ---
         return;
     }
 
@@ -421,8 +407,18 @@ dom.manufacture_cost.textContent = '$0';
 
     if (finalScore > gameState.bestRecipe.score) gameState.bestRecipe = { name: recipeName, score: finalScore };
     checkAndSetMarketTrend();
-    updateAllUI();
+    
+    delete gameState.recipe;
+    tempSelectedFlavors = [];
+    updateSelectedFlavorsDisplay();
+    showRecipeCreationSteps();
     dom.recipe_name_input.value = '';
+    dom.vg_slider.value = 50;
+    dom.nicotine_slider.value = 3;
+    dom.cooling_slider.value = 0;
+    dom.price_slider.value = 20;
+
+    updateAllUI();
     await saveGameData(currentUser.uid);
 }
 
@@ -537,7 +533,7 @@ function renderGuideContent() {
     if (!dom.guide_content) return;
     dom.guide_content.innerHTML = `
         <h3>게임 목표</h3>
-        <p>당신의 목표는 최고의 액상을 만들어 돈을 벌고, 회사를 성장시켜 '리더보드' 1위에 오르는 것입니다. 매월말일 리더보드 1위는 가입 메일주소로 트리츠 액상이 증정됩니다. 맛, 시장 트렌드, 그리고 당신의 '제조 기술'까지 모든 것이 완벽해야 합니다.</p>
+        <p>당신의 목표는 최고의 액상을 만들어 돈을 벌고, 회사를 성장시켜 '리더보드' 1위에 오르는 것입니다. 매월 말일 기준 리더보드 1위는 가입한 메일주소로 트리츠 액상이 제공됩니다. 맛, 시장 트렌드, 그리고 당신의 '제조 기술'까지 모든 것이 완벽해야 합니다.</p>
         <h3>게임 규칙</h3>
         <ul>
             <li><strong>일일 제조 제한:</strong> 공정한 경쟁을 위해, 하루에 액상은 최대 <strong>20번</strong>까지만 제조할 수 있습니다. 이 횟수는 매일 자정(한국 시간 기준)에 초기화됩니다.</li>
@@ -557,5 +553,16 @@ function renderGuideContent() {
         <h3>전설의 레시피</h3>
         <p>세상에는 완벽한 비율과 이름으로 만들어진 두 개의 전설적인 '히든 레시피'가 존재합니다: <strong>고트애플 (Goat Apple)</strong>과 <strong>소시오피치 (Socio-Peach)</strong>. 각 레시피는 입호흡과 폐호흡 버전이 따로 있습니다. 소문을 단서로 이 레시피들을 재현해 보세요!</p>
     `;
+}
+function updateManufactureButton() {
+    if (!dom.create_batch_btn) return;
+    const remaining = 20 - (gameState.dailyManufactureCount || 0);
+    if (remaining <= 0) {
+        dom.create_batch_btn.textContent = '일일 제조 횟수 소진';
+        dom.create_batch_btn.disabled = true;
+    } else {
+        const cost = dom.manufacture_cost.textContent;
+        dom.create_batch_btn.innerHTML = `제조 및 판매 (${remaining}회 남음) (비용: <span id="manufacture-cost">${cost}</span>)`;
+    }
 }
 initGame();
