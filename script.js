@@ -23,7 +23,7 @@ try {
 }
 
 const dom = {};
-const ids = ['login-container', 'game-container', 'email-input', 'password-input', 'login-btn', 'signup-btn', 'guest-login-btn', 'logout-btn', 'auth-error', 'user-email', 'cash', 'monthly-sales', 'company-level', 'skill-level', 'best-recipe-name', 'log', 'vg-slider', 'nicotine-slider', 'cooling-slider', 'price-slider', 'vg-value', 'nicotine-value', 'cooling-value', 'price-value', 'summary-vg', 'summary-pg', 'summary-flavor', 'summary-nicotine', 'summary-cooling', 'recipe-name-input', 'create-batch-btn', 'market-trend', 'upgrades-container', 'open-flavor-popup-btn', 'selected-flavors-display', 'flavor-popup', 'close-flavor-popup-btn', 'flavor-grid', 'confirm-flavor-selection-btn', 'individual-flavor-sliders', 'ratio-section', 'naming-section', 'pricing-section', 'summary-section', 'manufacture-cost', 'open-leaderboard-popup-btn', 'leaderboard-popup', 'close-leaderboard-popup-btn', 'leaderboard-content'];
+const ids = ['login-container', 'game-container', 'email-input', 'password-input', 'login-btn', 'signup-btn', 'guest-login-btn', 'logout-btn', 'auth-error', 'user-email', 'cash', 'monthly-sales', 'company-level', 'skill-level', 'best-recipe-name', 'log', 'vg-slider', 'nicotine-slider', 'cooling-slider', 'price-slider', 'vg-value', 'nicotine-value', 'cooling-value', 'price-value', 'summary-vg', 'summary-pg', 'summary-flavor', 'summary-nicotine', 'summary-cooling', 'recipe-name-input', 'create-batch-btn', 'market-trend', 'upgrades-container', 'open-flavor-popup-btn', 'selected-flavors-display', 'flavor-popup', 'close-flavor-popup-btn', 'flavor-grid', 'confirm-flavor-selection-btn', 'individual-flavor-sliders', 'ratio-section', 'naming-section', 'pricing-section', 'summary-section', 'manufacture-cost', 'open-leaderboard-popup-btn', 'leaderboard-popup', 'close-leaderboard-popup-btn', 'leaderboard-content', 'open-guide-popup-btn', 'guide-popup', 'close-guide-popup-btn', 'guide-content'];
 ids.forEach(id => {
     if (document.getElementById(id)) {
         dom[id.replace(/-/g, '_')] = document.getElementById(id);
@@ -31,68 +31,12 @@ ids.forEach(id => {
 });
 
 const FLAVORS = [
-     // --- 과일 계열 ---
-    { name: '딸기', category: '과일', icon: '🍓' }, 
-    { name: '바나나', category: '과일', icon: '🍌' }, 
-    { name: '블루베리', category: '과일', icon: '🫐' },
-    { name: '망고', category: '과일', icon: '🥭' }, 
-    { name: '레몬', category: '과일', icon: '🍋' }, 
-    { name: '라임', category: '과일', icon: '🍈' }, 
-    { name: '사과', category: '과일', icon: '🍎' }, 
-    { name: '복숭아', category: '과일', icon: '🍑' }, 
-    { name: '자두', category: '과일', icon: '🟣' }, 
-    { name: '파인애플', category: '과일', icon: '🍍' }, 
-    { name: '포도', category: '과일', icon: '🍇' }, 
-    { name: '자몽', category: '과일', icon: '🍊' }, 
-    { name: '수박', category: '과일', icon: '🍉' }, 
-    { name: '멜론', category: '과일', icon: '🍈' }, 
-    { name: '리치', category: '과일', icon: '🥥' }, 
-    { name: '체리', category: '과일', icon: '🍒' },
-    { name: '키위', category: '과일', icon: '🥝' },
-    { name: '알로에', category: '과일', icon: '🪴' },
-    { name: '구아바', category: '과일', icon: '🥑' },
-    { name: '패션후르츠', category: '과일', icon: '🥭' },
-    { name: '시르삭', category: '과일', icon: '🍈' }, // 신규 추가
-
-    // --- 디저트 계열 ---
-    { name: '바닐라', category: '디저트', icon: '🍦' }, 
-    { name: '커스타드', category: '디저트', icon: '🍮' }, 
-    { name: '치즈케이크', category: '디저트', icon: '🍰' }, 
-    { name: '초콜릿', category: '디저트', icon: '🍫' }, 
-    { name: '카라멜', category: '디저트', icon: '🍬' }, 
-    { name: '요거트', category: '디저트', icon: '🥛' },
-    { name: '애플파이', category: '디저트', icon: '🥧' }, 
-    { name: '도넛', category: '디저트', icon: '🍩' }, 
-    { name: '쿠키앤크림', category: '디저트', icon: '🍪' },
-    { name: '솜사탕', category: '디저트', icon: '☁️' },
-    { name: '버터스카치', category: '디저트', icon: '🧈' },
-
-    // --- 연초 계열 ---
-    { name: '연초', category: '연초', icon: '🚬' }, 
-    { name: '시가', category: '연초', icon: '💨' },
-    { name: 'RY4', category: '연초', icon: '🍂' },
-    { name: '쿠바 시가', category: '연초', icon: '🇨🇺' }, // 신규 추가
-    { name: '파이프 연초', category: '연초', icon: '📜' }, // 신규 추가
-    { name: '크림 연초', category: '연초', icon: '🍮' }, // 신규 추가
-
-    // --- 멘솔/민트 계열 ---
-    { name: '멘솔', category: '멘솔', icon: '❄️' }, 
-    { name: '스피어민트', category: '멘솔', icon: '🍃' },
-    { name: '페퍼민트', category: '멘솔', icon: '🌿' },
-
-    // --- 음료 계열 ---
-    { name: '커피', category: '음료', icon: '☕' }, 
-    { name: '콜라', category: '음료', icon: '🥤' },
-    { name: '에너지드링크', category: '음료', icon: '⚡' },
-    { name: '레몬에이드', category: '음료', icon: '🍹' },
-    { name: '밀크티', category: '음료', icon: '🧋' },
-    { name: '피나콜라다', category: '음료', icon: '🍍' },
-
-    // --- 특별 향료 ---
-    { name: '꿀', category: '특별', icon: '🍯' }, 
-    { name: '시나몬', category: '특별', icon: '🪵' },
-    { name: '장미', category: '특별', icon: '🌹' },
-    { name: '헤이즐넛', category: '특별', icon: '🌰' },
+    { name: '딸기', category: '과일', icon: '🍓' }, { name: '바나나', category: '과일', icon: '🍌' }, { name: '블루베리', category: '과일', icon: '🫐' }, { name: '망고', category: '과일', icon: '🥭' }, { name: '레몬', category: '과일', icon: '🍋' }, { name: '라임', category: '과일', icon: '🍈' }, { name: '사과', category: '과일', icon: '🍎' }, { name: '복숭아', category: '과일', icon: '🍑' }, { name: '자두', category: '과일', icon: '🟣' }, { name: '파인애플', category: '과일', icon: '🍍' }, { name: '포도', category: '과일', icon: '🍇' }, { name: '자몽', category: '과일', icon: '🍊' }, { name: '수박', category: '과일', icon: '🍉' }, { name: '멜론', category: '과일', icon: '🍈' }, { name: '리치', category: '과일', icon: '🥥' }, { name: '체리', category: '과일', icon: '🍒' }, { name: '키위', category: '과일', icon: '🥝' }, { name: '알로에', category: '과일', icon: '🪴' }, { name: '구아바', category: '과일', icon: '🥑' }, { name: '패션후르츠', category: '과일', icon: '🥭' }, { name: '시르삭', category: '과일', icon: '🍈' },
+    { name: '바닐라', category: '디저트', icon: '🍦' }, { name: '커스타드', category: '디저트', icon: '🍮' }, { name: '치즈케이크', category: '디저트', icon: '🍰' }, { name: '초콜릿', category: '디저트', icon: '🍫' }, { name: '카라멜', category: '디저트', icon: '🍬' }, { name: '요거트', category: '디저트', icon: '🥛' }, { name: '애플파이', category: '디저트', icon: '🥧' }, { name: '도넛', category: '디저트', icon: '🍩' }, { name: '쿠키앤크림', category: '디저트', icon: '🍪' }, { name: '솜사탕', category: '디저트', icon: '☁️' }, { name: '버터스카치', category: '디저트', icon: '🧈' },
+    { name: '연초', category: '연초', icon: '🚬' }, { name: '시가', category: '연초', icon: '💨' }, { name: 'RY4', category: '연초', icon: '🍂' }, { name: '쿠바 시가', category: '연초', icon: '🇨🇺' }, { name: '파이프 연초', category: '연초', icon: '📜' }, { name: '크림 연초', category: '연초', icon: '🍮' },
+    { name: '멘솔', category: '멘솔', icon: '❄️' }, { name: '스피어민트', category: '멘솔', icon: '🍃' }, { name: '페퍼민트', category: '멘솔', icon: '🌿' },
+    { name: '커피', category: '음료', icon: '☕' }, { name: '콜라', category: '음료', icon: '🥤' }, { name: '에너지드링크', category: '음료', icon: '⚡' }, { name: '레몬에이드', category: '음료', icon: '🍹' }, { name: '밀크티', category: '음료', icon: '🧋' }, { name: '피나콜라다', category: '음료', icon: '🍍' },
+    { name: '꿀', category: '특별', icon: '🍯' }, { name: '시나몬', category: '특별', icon: '🪵' }, { name: '장미', category: '특별', icon: '🌹' }, { name: '헤이즐넛', category: '특별', icon: '🌰' },
 ];
 
 const SYNERGY_SCORES = { '딸기-바나나': 1.2, '딸기-요거트': 1.15, '망고-파인애플': 1.1, '레몬-라임': 1.2, '복숭아-요거트': 1.25, '블루베리-치즈케이크': 1.3, '연초-카라멜': 1.1, '연초-바닐라': 1.15, '커피-시가': 1.2, '초콜릿-스피어민트': 1.1, '사과-멘솔': 1.1 };
@@ -225,6 +169,7 @@ function listenToLeaderboard() {
 function initGame() {
     renderFlavorGrid();
     renderUpgrades();
+    renderGuideContent();
     addEventListeners();
     updateAllUI();
     listenToLeaderboard();
@@ -239,6 +184,8 @@ function addEventListeners() {
     dom.confirm_flavor_selection_btn.addEventListener('click', confirmFlavorSelection);
     dom.open_leaderboard_popup_btn.addEventListener('click', () => dom.leaderboard_popup.classList.replace('hidden', 'flex'));
     dom.close_leaderboard_popup_btn.addEventListener('click', () => dom.leaderboard_popup.classList.replace('flex', 'hidden'));
+    dom.open_guide_popup_btn.addEventListener('click', () => dom.guide_popup.classList.replace('hidden', 'flex'));
+    dom.close_guide_popup_btn.addEventListener('click', () => dom.guide_popup.classList.replace('flex', 'hidden'));
     ['vg_slider', 'nicotine_slider', 'cooling_slider', 'price_slider'].forEach(key => dom[key].addEventListener('input', updateRecipeAndCost));
     dom.create_batch_btn.addEventListener('click', createAndSellBatch);
     dom.upgrades_container.addEventListener('click', e => { if (e.target.closest('button')?.dataset.key) buyUpgrade(e.target.closest('button').dataset.key); });
@@ -325,7 +272,7 @@ function updateAllUI() {
     dom.monthly_sales.textContent = `$${Math.round(gameState.monthlySales)}`;
     dom.best_recipe_name.textContent = gameState.bestRecipe.name;
     const skillLevel = Math.floor(Math.log10(gameState.skillExp / 100 + 1)) + 1;
-    gameState.companyLevel = Math.floor(Math.log2( (gameState.cash + gameState.monthlySales) / 1000 + 1)) + 1;
+    gameState.companyLevel = Math.floor(Math.log2( (gameState.cash + gameState.monthlySales * 10) / 1000 + 1)) + 1; // 월간매출 가중치 적용
     dom.company_level.textContent = gameState.companyLevel;
     dom.skill_level.textContent = `Lv.${skillLevel}`;
     renderUpgrades();
@@ -400,16 +347,15 @@ async function createAndSellBatch() {
         return;
     }
 
-    const { finalScore, nameScore, isEasterEgg, easterEggBonus, qualityText } = calculateFinalScore(recipeName, qualityScore);
+    let { finalScore, nameScore, isEasterEgg, easterEggBonus, qualityText } = calculateFinalScore(recipeName, qualityScore);
 
-    // 제조 기술에 따른 대성공/실수
     const skillLevel = Math.floor(Math.log10(gameState.skillExp / 100 + 1)) + 1;
     let skillEventText = '';
     const skillRoll = Math.random();
-    if (skillRoll < 0.05 + skillLevel * 0.01) { // 대성공 확률
+    if (skillRoll < 0.05 + skillLevel * 0.01) {
         finalScore *= 1.2;
         skillEventText = '<span class="text-cyan-300">대성공!</span> ';
-    } else if (skillRoll > 0.95 - skillLevel * 0.01) { // 실수 확률
+    } else if (skillRoll > 0.95 - skillLevel * 0.01) {
         finalScore *= 0.8;
         skillEventText = '<span class="text-orange-400">작은 실수...</span> ';
     }
@@ -477,10 +423,10 @@ function calculateRecipeQualityScore() {
     flavorComboScore *= (1 + gameState.upgrades.flavor_rnd.bonus);
 
     const isMTL = (100 - vg - totalFlavorPerc) >= 50;
-    const nicOptimal = isMTL ? 10 : 3;
+    const nicOptimal = isMTL ? 10 : 4.5;
     const nicScore = 1 - Math.abs(nicotine - nicOptimal) / (isMTL ? 10 : 6);
 
-    const vgScore = 1 - Math.abs(vg - 55) / 45;
+    const vgScore = 1 - Math.abs(vg - (isMTL ? 50 : 60)) / 50;
     const coolingScore = 1 - Math.abs(cooling - 3) / 7;
     
     const throatHitScore = (nicotine / 20) * 0.6 + (cooling / 10) * 0.2 + (Object.keys(flavorRatios).filter(name => ['연초','디저트'].includes(FLAVORS.find(f => f.name === name).category)).length / 5) * 0.2;
@@ -495,7 +441,8 @@ function calculateFinalScore(recipeName, qualityScore) {
     const lowerName = recipeName.toLowerCase();
     const vg = parseInt(dom.vg_slider.value);
     const nic = parseInt(dom.nicotine_slider.value);
-    const isMTL = (100 - vg - Object.values(gameState.recipe.flavorRatios).reduce((a, b) => a + b, 0)) >= 50;
+    const totalFlavorPerc = Object.values(gameState.recipe.flavorRatios).reduce((a, b) => a + b, 0);
+    const isMTL = (100 - vg - totalFlavorPerc) >= 50;
 
     const goatApple = lowerName.includes('고트애플');
     const socioPeach = lowerName.includes('소시오피치');
@@ -521,7 +468,7 @@ function calculateFinalScore(recipeName, qualityScore) {
 function calculateNameScore(name) {
     if (!name.trim()) return 0.8;
     let score = 1.0;
-    gameState.recipe.selectedFlavors.forEach(flavor => { if (name.toLowerCase().includes(flavor.toLowerCase())) score += 0.05; });
+    gameState.recipe.selectedFlavors.forEach(flavor => { if (name.toLowerCase().includes(FLAVORS.find(f => f.name === flavor).name.toLowerCase())) score += 0.05; });
     if (name.length > 5 && name.length < 20) score += 0.05;
     return Math.min(1.4, score);
 }
@@ -557,4 +504,24 @@ function logMessage(message, type = 'info') {
     if (type === 'game') div.innerHTML = message;
     else { div.textContent = message; div.className = typeClasses[type] || 'text-gray-400'; }
     dom.log.prepend(div);
+}
+function renderGuideContent() {
+    if (!dom.guide_content) return;
+    dom.guide_content.innerHTML = `
+        <h3>게임 목표</h3>
+        <p>당신의 목표는 최고의 액상을 만들어 돈을 벌고, 회사를 성장시켜 '리더보드' 1위에 오르는 것입니다. 맛, 시장 트렌드, 그리고 당신의 '제조 기술'까지 모든 것이 완벽해야 합니다.</p>
+        <h3>액상 제조법</h3>
+        <p>1. <strong>향료 선택:</strong> 최대 5개의 향료를 조합하세요. 향료 아이콘으로 카테고리를 확인할 수 있습니다.</p>
+        <p>2. <strong>비율 조절:</strong> 선택한 향료 각각의 농도를 개별적으로 조절하여 레시피의 핵심 맛을 설계하세요. VG, 니코틴, 쿨링으로 액상의 특징을 완성합니다.</p>
+        <p>3. <strong>이름 & 가격:</strong> 멋진 이름을 짓고, 품질에 맞는 합리적인 가격을 책정하여 수익을 극대화하세요.</p>
+        <h3>심화 과정</h3>
+        <ul>
+            <li><strong>숨겨진 궁합:</strong> 특정 향료들 사이에는 특별한 시너지(보너스)와 충돌(페널티) 효과가 존재합니다. 수많은 조합을 실험하며 최고의 궁합을 찾아내세요!</li>
+            <li><strong>제조 기술:</strong> 액상을 만들수록 경험치가 쌓여 레벨이 오릅니다. 레벨이 높으면 가끔 '대성공!'이 터져 명작이 탄생합니다.</li>
+            <li><strong>타격감:</strong> 니코틴, 쿨링, 특정 향료(연초/디저트) 조합으로 타격감 점수를 높여 특정 고객층을 공략할 수 있습니다.</li>
+            <li><strong>입호흡/폐호흡:</strong> VG/PG 비율에 따라 액상의 종류가 결정되고, 그에 맞는 최적의 니코틴 레벨이 달라집니다. (입호흡: 9~20mg, 폐호흡: 3~6mg)</li>
+        </ul>
+        <h3>전설의 레시피</h3>
+        <p>세상에는 완벽한 비율과 이름으로 만들어진 두 개의 전설적인 '히든 레시피'가 존재합니다: <strong>고트애플 (Goat Apple)</strong>과 <strong>소시오피치 (Socio-Peach)</strong>. 각 레시피는 입호흡과 폐호흡 버전이 따로 있습니다. 소문을 단서로 이 레시피들을 재현해 보세요!</p>
+    `;
 }
