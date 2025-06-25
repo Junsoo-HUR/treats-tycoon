@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TREATS 타이쿤 </title>
+    <title>TREATS 타이쿤</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -13,7 +13,7 @@
     <!-- 로그인 컨테이너 -->
     <div id="login-container" class="flex items-center justify-center min-h-screen">
         <div class="w-full max-w-md bg-gray-800 p-8 rounded-xl shadow-lg">
-            <h1 class="text-3xl font-bold text-center text-indigo-400 mb-2">TREATS 타이쿤 </h1>
+            <h1 class="text-3xl font-bold text-center text-indigo-400 mb-2">TREATS 타이쿤</h1>
             <p class="text-center text-gray-400 mb-6">로그인하여 회사를 경영하세요</p>
             <div class="space-y-4">
                 <input type="email" id="email-input" placeholder="이메일" class="w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -103,6 +103,10 @@
             
             <div class="lg:col-span-1 bg-gray-800 p-6 rounded-xl shadow-lg flex flex-col">
                  <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 pb-2">🏢 회사 관리</h2>
+                 <div id="tutorial-section" class="mb-4 bg-gray-900 p-4 rounded-lg">
+                     <h3 class="font-bold text-indigo-300 text-center mb-2">오늘의 첫 과제 📋</h3>
+                     <ul id="task-list" class="space-y-1 text-sm"></ul>
+                 </div>
                  <div class="mb-4 bg-gray-900 p-4 rounded-lg text-center">
                      <h3 class="font-bold text-indigo-300">📈 시장 트렌드</h3>
                      <p id="market-trend" class="text-lg">분석 중...</p>
@@ -117,7 +121,7 @@
         </main>
     </div>
 
-    <!-- 향료 선택 팝업 -->
+    <!-- 팝업창들 -->
     <div id="flavor-popup" class="fixed inset-0 bg-gray-900 bg-opacity-75 popup-overlay items-center justify-center hidden z-50">
         <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl h-5/6 flex flex-col">
             <div class="p-4 border-b border-gray-700 flex justify-between items-center"><h2 class="text-2xl font-bold">향료 선택 (최대 5개)</h2><button id="close-flavor-popup-btn" class="text-gray-400 hover:text-white text-3xl">&times;</button></div>
@@ -125,15 +129,24 @@
             <div class="p-4 border-t border-gray-700"><button id="confirm-flavor-selection-btn" class="w-full bg-indigo-600 text-white font-bold py-3 px-4 rounded-lg btn">선택 완료</button></div>
         </div>
     </div>
-    
-    <!-- 리더보드 팝업 -->
     <div id="leaderboard-popup" class="fixed inset-0 bg-gray-900 bg-opacity-75 popup-overlay items-center justify-center hidden z-50">
         <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg h-auto flex flex-col">
             <div class="p-4 border-b border-gray-700 flex justify-between items-center"><h2 class="text-2xl font-bold">🏆 리더보드</h2><button id="close-leaderboard-popup-btn" class="text-gray-400 hover:text-white text-3xl">&times;</button></div>
             <div id="leaderboard-content" class="p-6 space-y-2 overflow-y-auto"></div>
         </div>
     </div>
-    
-    <script type="module" src="script.js"></script>
+    <div id="mentor-popup" class="fixed bottom-5 right-5 bg-gray-800 border-2 border-indigo-400 rounded-lg shadow-2xl p-4 w-80 hidden z-50 animate-bounce">
+        <div class="flex items-start space-x-3">
+            <div class="text-4xl">👨‍🔬</div>
+            <div>
+                <h4 class="font-bold text-indigo-300">더쥬팩씨</h4>
+                <p id="mentor-message" class="text-sm text-white"></p>
+            </div>
+        </div>
+        <button id="close-mentor-popup-btn" class="absolute top-2 right-2 text-gray-500 hover:text-white">&times;</button>
+    </div>
+    <div id="flavor-tooltip" class="absolute hidden bg-gray-900 text-white text-sm p-3 rounded-lg shadow-lg z-50 max-w-xs border border-gray-700"></div>
+
+    <script type="module" src="main.js"></script>
 </body>
 </html>
