@@ -51,6 +51,7 @@ function getBaseGameState(user) {
 // 인증 상태 감지
 if (auth) {
     onAuthStateChanged(auth, async user => {
+        console.log('✅ 1. onAuthStateChanged 발동! 사용자:', user ? user.uid : '없음'); // <--- 1번 로그
         if (user) {
             currentUser = user;
             await loadGameData(user);
@@ -88,6 +89,7 @@ async function handleAuth(action, credentials) {
 
 // 게임 데이터 로드
 async function loadGameData(user) {
+    console.log('✅ 2. loadGameData 시작...'); // <--- 2번 로그
     if (!db) {
         gameState = getBaseGameState(user);
         return;
@@ -120,6 +122,8 @@ async function loadGameData(user) {
     if (!gameState.skillExp) gameState.skillExp = 0;
     if (!gameState.savedRecipes) gameState.savedRecipes = [];
     if (!gameState.tutorial) gameState.tutorial = getBaseGameState(user).tutorial;
+
+    console.log('✅ 3. loadGameData 완료! 가져온 데이터:', gameState); // <--- 3번 로그
 }
 
 // 게임 데이터 저장
@@ -152,6 +156,7 @@ function listenToLeaderboard() {
 
 // 게임 초기화
 function initGame(user) {
+    console.log('✅ 4. initGame 시작! 게임 화면을 표시합니다.'); // <--- 4번 로그
     UIManager.showGameScreen(user);
     UIManager.renderFlavorGrid(false, handleFlavorClick, handleFlavorMouseover, handleFlavorMouseout);
     addEventListeners();
@@ -234,7 +239,7 @@ function confirmFlavorSelection() {
     UIManager.renderIndividualFlavorSliders(gameState.recipe.selectedFlavors, () => UIManager.updateRecipeAndCost(gameState));
     UIManager.updateRecipeAndCost(gameState);
     UIManager.showRecipeCreationSteps(true);
-    checkTutorial(); // 튜토리얼 진행도 체크
+    checkTutorial();
 }
 
 // 액상 제조 및 판매
@@ -305,7 +310,7 @@ async function createAndSellBatch() {
     resetRecipeMaker();
     UIManager.updateAllUI(gameState);
     
-    checkTutorial(); // 튜토리얼 진행도 체크
+    checkTutorial();
     
     await saveGameData();
 }
