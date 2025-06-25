@@ -1,0 +1,3 @@
+import { firebaseConfig, FLAVORS, SYNERGY_SCORES, CONFLICT_SCORES, CRAFTING_RECIPES, TUTORIAL, DOM_IDS } from './game-data.js';
+import { renderFlavorGrid, updateFlavorGridSelection, confirmFlavorSelection, ... } from './ui-manager.js';
+// ... (Firebase 초기화, 인증, 데이터 로드, 핵심 게임 로직 등) ...
