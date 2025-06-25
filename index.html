@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TREATS 타이쿤 </title>
+    <title>TREATS 타이쿤 2.0 - 새로운 시작</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
@@ -13,7 +13,7 @@
     <!-- 로그인 컨테이너 -->
     <div id="login-container" class="flex items-center justify-center min-h-screen">
         <div class="w-full max-w-md bg-gray-800 p-8 rounded-xl shadow-lg">
-            <h1 class="text-3xl font-bold text-center text-indigo-400 mb-2">TREATS 타이쿤</h1>
+            <h1 class="text-3xl font-bold text-center text-indigo-400 mb-2">TREATS 타이쿤 2.0</h1>
             <p class="text-center text-gray-400 mb-6">로그인하여 회사를 경영하세요</p>
             <div class="space-y-4">
                 <input type="email" id="email-input" placeholder="이메일" class="w-full bg-gray-700 text-white p-3 rounded-md border border-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500">
@@ -39,7 +39,7 @@
             </div>
             <h1 class="text-4xl md:text-5xl font-bold text-indigo-400">TREATS 타이쿤 🏢</h1>
             <p class="text-gray-400 mt-2">최고의 액상을 만들고, 회사를 성장시켜 업계의 전설이 되세요!</p>
-            <p id="bug-notice" class="text-xs text-yellow-400 mt-3 animate-pulse hidden">※ 버그 공지: 향료 선택이 안될 시, 로그아웃 후 재로그인 해주세요!</p>
+            <p id="bug-notice" class="text-xs text-yellow-400 mt-3 animate-pulse">※ 버그 공지: 향료 선택이 안될 시, 로그아웃 후 재로그인 해주세요!</p>
         </header>
 
         <div class="bg-gray-800 p-4 rounded-xl shadow-lg mb-6 grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
@@ -104,23 +104,19 @@
             
             <div class="lg:col-span-1 bg-gray-800 p-6 rounded-xl shadow-lg flex flex-col">
                  <h2 class="text-2xl font-bold mb-4 border-b border-gray-700 pb-2">🏢 회사 관리</h2>
-
-                 <!-- 오늘의 과제 섹션 추가 -->
+                 <div class="mb-4 bg-gray-900 p-4 rounded-lg">
+                     <h3 class="font-bold text-indigo-300 text-center mb-2">📈 시장 트렌드</h3>
+                     <p id="market-trend" class="text-lg text-center">분석 중...</p>
+                 </div>
                  <div id="tutorial-section" class="mb-4 bg-gray-900 p-4 rounded-lg">
                      <h3 class="font-bold text-indigo-300 text-center mb-2">오늘의 첫 과제 📋</h3>
                      <ul id="task-list" class="space-y-1 text-sm"></ul>
                  </div>
-
-                 <div class="mb-4 bg-gray-900 p-4 rounded-lg text-center">
-                     <h3 class="font-bold text-indigo-300">📈 시장 트렌드</h3>
-                     <p id="market-trend" class="text-lg">분석 중...</p>
-                 </div>
                  <h3 class="font-bold text-lg mb-3">🛠️ 회사 업그레이드</h3>
                  <div id="upgrades-container" class="space-y-3 mb-4"></div>
                  <div class="flex-grow flex flex-col min-h-0 justify-end space-y-2">
-                    <button id="open-recipebook-popup-btn" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg btn">📖 레시피 북</button>
                     <button id="open-leaderboard-popup-btn" class="w-full bg-yellow-600 hover:bg-yellow-700 text-white font-bold py-3 px-4 rounded-lg btn">🏆 리더보드 보기</button>
-                    <a href="https://www.tjf.kr/boardPost/122716/3" target="_blank" rel="noopener noreferrer" class="w-full bg-gray-600 hover:bg-gray-700 text-white text-center font-bold py-3 px-4 rounded-lg btn">ℹ️ 게임 공략 위키</a>
+                    <a href="https://www.tjf.kr/boardPost/122716/3" target="_blank" rel="noopener noreferrer" class="w-full bg-gray-600 hover:bg-gray-700 text-white text-center font-bold py-3 px-4 rounded-lg btn">📖 게임 공략 위키</a>
                 </div>
             </div>
         </main>
@@ -140,13 +136,6 @@
             <div id="leaderboard-content" class="p-6 space-y-2 overflow-y-auto"></div>
         </div>
     </div>
-    <div id="recipebook-popup" class="fixed inset-0 bg-gray-900 bg-opacity-75 popup-overlay items-center justify-center hidden z-50">
-        <div class="bg-gray-800 rounded-xl shadow-2xl w-full max-w-4xl h-5/6 flex flex-col">
-            <div class="p-4 border-b border-gray-700 flex justify-between items-center"><h2 class="text-2xl font-bold">📖 레시피 북</h2><button id="close-recipebook-popup-btn" class="text-gray-400 hover:text-white text-3xl">&times;</button></div>
-            <div id="recipebook-content" class="p-6 space-y-3 overflow-y-auto"></div>
-        </div>
-    </div>
-    <!-- 멘토 팝업 추가 -->
     <div id="mentor-popup" class="fixed bottom-5 right-5 bg-gray-800 border-2 border-indigo-400 rounded-lg shadow-2xl p-4 w-80 hidden z-50 animate-bounce">
         <div class="flex items-start space-x-3">
             <div class="text-4xl">👨‍🔬</div>
@@ -157,6 +146,8 @@
         </div>
         <button id="close-mentor-popup-btn" class="absolute top-2 right-2 text-gray-500 hover:text-white">&times;</button>
     </div>
+    <!-- 향료 정보 툴팁 -->
+    <div id="flavor-tooltip" class="absolute hidden bg-gray-900 text-white text-sm p-3 rounded-lg shadow-lg z-50 max-w-xs border border-gray-700"></div>
 
     <script type="module" src="script.js"></script>
 </body>
