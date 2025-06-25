@@ -19,6 +19,7 @@ UIManager.cacheDOM(DOM_IDS);
 let gameState = {};
 let currentUser = null;
 let unsubscribeLeaderboard = null;
+let tempSelectedFlavors = [];
 
 function getBaseGameState() {
     return {
@@ -37,7 +38,6 @@ function getBaseGameState() {
         tutorial: { tasks: JSON.parse(JSON.stringify(TUTORIAL.tasks)), introSeen: false }
     };
 }
-
 if (auth) {
     onAuthStateChanged(auth, async user => {
         if (user) {
@@ -51,11 +51,9 @@ if (auth) {
         }
     });
 }
-
 async function handleAuth(action) {
     if (!auth) { UIManager.showAuthError("서버 연결이 필요합니다."); return; }
-    const email = UIManager.getAuthInput().email;
-    const password = UIManager.getAuthInput().password;
+    const { email, password } = UIManager.getAuthInput();
     UIManager.clearAuthError();
     try {
         if (action === 'login') {
@@ -68,7 +66,6 @@ async function handleAuth(action) {
         UIManager.handleAuthError(error);
     }
 }
-
 async function loadGameData(userId) {
     if (userId === 'guest') {
         const savedData = localStorage.getItem('treats-tycoon-guest-save');
@@ -101,7 +98,6 @@ async function loadGameData(userId) {
     if (!gameState.savedRecipes) gameState.savedRecipes = [];
     if (!gameState.tutorial) gameState.tutorial = getBaseGameState().tutorial;
 }
-
 async function saveGameData(userId, isNewUser = false) {
     if (!userId) return;
     if (userId === 'guest') {
@@ -113,7 +109,6 @@ async function saveGameData(userId, isNewUser = false) {
     let dataToSave = isNewUser ? { ...getBaseGameState(), email: currentUser.email, uid: userId } : { ...gameState, uid: userId };
     await setDoc(userDocRef, dataToSave, { merge: true });
 }
-
 function listenToLeaderboard() {
     if (!db || (currentUser && currentUser.isAnonymous)) {
         UIManager.renderLeaderboard(null, true);
@@ -128,25 +123,22 @@ function listenToLeaderboard() {
         UIManager.renderLeaderboard(null, false, null, true);
     });
 }
-
 function initGame(user) {
     UIManager.showGameScreen(user);
-    UIManager.renderFlavorGrid(FLAVORS, gameState.tutorial && !gameState.tutorial.tasks[0].completed);
-    UIManager.renderUpgrades(gameState);
+    UIManager.renderFlavorGrid(FLAVORS, handleFlavorClick, handleFlavorMouseover, handleFlavorMouseout);
     addEventListeners();
     UIManager.updateAllUI(gameState);
     listenToLeaderboard();
     checkTutorial();
 }
-
 function addEventListeners() {
     UIManager.addCommonEventListeners(
-        () => { // onOpenFlavorPopup
-            UIManager.updateFlavorGridSelection(gameState.recipe?.selectedFlavors || []);
-        },
-        confirmFlavorSelection, // onConfirmFlavor
+        openFlavorPopup,
+        confirmFlavorSelection,
         createAndSellBatch,
         buyUpgrade,
+        () => UIManager.openPopup(dom.leaderboard_popup),
+        () => UIManager.closePopup(dom.leaderboard_popup),
         (e) => { if(e.target.dataset.recipeIndex !== undefined) loadRecipe(e.target.dataset.recipeIndex); },
         () => { 
             if (currentUser && !currentUser.isAnonymous) { signOut(auth); }
@@ -163,22 +155,39 @@ function addEventListeners() {
         }
     );
 }
-
-function confirmFlavorSelection(selected) {
+function handleFlavorClick(e) {
+    const item = e.target.closest('.flavor-item');
+    if (!item || item.classList.contains('opacity-50')) return;
+    const flavorName = item.dataset.flavorName;
+    const index = tempSelectedFlavors.indexOf(flavorName);
+    if (index > -1) {
+        tempSelectedFlavors.splice(index, 1);
+    } else {
+        if (tempSelectedFlavors.length < 5) {
+            tempSelectedFlavors.push(flavorName);
+        } else {
+            UIManager.logMessage('향료는 최대 5개까지 선택할 수 있습니다.', 'error');
+        }
+    }
+    UIManager.updateFlavorGridSelection(tempSelectedFlavors);
+}
+function handleFlavorMouseover(e) { UIManager.showFlavorTooltip(e, FLAVORS); }
+function handleFlavorMouseout() { UIManager.hideFlavorTooltip(); }
+function confirmFlavorSelection() {
     gameState.recipe = {
-        selectedFlavors: [...selected],
+        selectedFlavors: [...tempSelectedFlavors],
         flavorRatios: {}
     };
-    selected.forEach(name => {
-        gameState.recipe.flavorRatios[name] = 5;
+    tempSelectedFlavors.forEach(name => {
+        gameState.recipe.flavorRatios[name] = 5; // 기본값 5%
     });
+    UIManager.closePopup(dom.flavor_popup);
     UIManager.updateSelectedFlavorsDisplay(gameState.recipe.selectedFlavors, FLAVORS);
-    UIManager.renderIndividualFlavorSliders(gameState.recipe.selectedFlavors);
+    UIManager.renderIndividualFlavorSliders(gameState.recipe.selectedFlavors, () => UIManager.updateRecipeAndCost(gameState, FLAVORS));
     UIManager.updateRecipeAndCost(gameState, FLAVORS);
     UIManager.showRecipeCreationSteps(true);
     checkTutorial(1);
 }
-
 async function createAndSellBatch() {
     if (gameState.dailyManufactureCount >= 20) {
         UIManager.logMessage('하루 최대 제조 횟수(20회)에 도달했습니다. 내일 다시 시도해주세요.', 'error'); return;
@@ -201,8 +210,7 @@ async function createAndSellBatch() {
         await saveGameData(currentUser.uid);
         return;
     }
-
-    let { finalScore, nameScore, isEasterEgg, easterEggBonus, qualityText } = calculateFinalScore(recipeName, qualityScore);
+    let { finalScore, isEasterEgg, easterEggBonus, qualityText } = calculateFinalScore(recipeName, qualityScore);
     const skillLevel = Math.floor(Math.log10(gameState.skillExp / 100 + 1)) + 1;
     let skillEventText = '';
     const skillRoll = Math.random();
@@ -232,9 +240,6 @@ async function createAndSellBatch() {
     gameState.monthlySales += revenue;
     gameState.skillExp += Math.max(10, Math.round(profit / 10));
     
-    saveRecipe(recipeName, manufactureCost);
-    checkTutorial(2, profit);
-
     const logData = { isEasterEgg, profit, recipeName, skillEventText, qualityText, trendBonusText, salesVolume, setPrice, qualityScore, throatHitScore, monthlySales: gameState.monthlySales, priceRatio };
     UIManager.renderLogMessage(logData);
 
@@ -262,6 +267,7 @@ function calculateRecipeQualityScore() {
         }
     }
     flavorComboScore *= (1 + gameState.upgrades.flavor_rnd.bonus);
+
     const isMTL = (100 - vg - totalFlavorPerc) >= 50;
     const nicOptimal = isMTL ? 10 : 4.5;
     const nicScore = 1 - Math.abs(nicotine - nicOptimal) / (isMTL ? 10 : 6);
@@ -271,27 +277,40 @@ function calculateRecipeQualityScore() {
     const finalScore = (flavorComboScore * 0.35) + (vgScore * 0.2) + (nicScore * 0.25) + (coolingScore * 0.1) + (throatHitScore * 0.1);
     return { qualityScore: Math.max(0.1, finalScore * (1 + gameState.upgrades.lab.bonus)), penaltyMessage: null, throatHitScore };
 }
-
 function calculateFinalScore(recipeName, qualityScore) {
     const { vg, nicotine, flavorRatios } = UIManager.getCurrentRecipeValues();
     const flavorNames = new Set(gameState.recipe.selectedFlavors);
-    let isEasterEgg = false, easterEggBonus = 1.0, qualityText = '';
+    let isEasterEgg = false, easterEggBonus = 1.0, qualityText = '', isCrafted = false;
     const lowerName = recipeName.toLowerCase();
     const totalFlavorPerc = Object.values(flavorRatios).reduce((a, b) => a + b, 0);
     const isMTL = (100 - vg - totalFlavorPerc) >= 50;
-    const goatApple = lowerName.includes('고트애플') && flavorNames.has('사과') && flavorNames.has('딸기');
-    const socioPeach = lowerName.includes('소시오피치') && flavorNames.has('복숭아') && flavorNames.has('자두');
-    if (goatApple && ((isMTL && nicotine === 10) || (!isMTL && nicotine === 6))) { isEasterEgg = true; easterEggBonus = 1.8; qualityText = "🎉 히든 레시피 발견!"; }
-    else if (socioPeach && ((isMTL && nicotine === 10) || (!isMTL && nicotine === 6))) { isEasterEgg = true; easterEggBonus = 1.8; qualityText = "🎉 히든 레시피 발견!"; }
+
+    for (const craftedName in CRAFTING_RECIPES) {
+        const recipe = CRAFTING_RECIPES[craftedName];
+        if (recipe.ingredients.every(ing => flavorNames.has(ing)) && flavorNames.size === recipe.ingredients.length) {
+            isCrafted = true;
+            easterEggBonus = recipe.bonus;
+            qualityText = `✨ 제조법 발견! [${craftedName}]`;
+            break;
+        }
+    }
+
+    if (!isCrafted) {
+        const goatApple = lowerName.includes('고트애플') && flavorNames.has('사과') && flavorNames.has('딸기');
+        const socioPeach = lowerName.includes('소시오피치') && flavorNames.has('복숭아') && flavorNames.has('자두');
+        if (goatApple && ((isMTL && nicotine === 10) || (!isMTL && nicotine === 6))) { isEasterEgg = true; easterEggBonus = 1.8; qualityText = "🎉 히든 레시피 발견!"; }
+        else if (socioPeach && ((isMTL && nicotine === 10) || (!isMTL && nicotine === 6))) { isEasterEgg = true; easterEggBonus = 1.8; qualityText = "🎉 히든 레시피 발견!"; }
+    }
+    
     const nameScore = calculateNameScore(recipeName);
     const finalScore = qualityScore * nameScore * easterEggBonus;
-    if (!isEasterEgg) {
+    if (!isEasterEgg && !isCrafted) {
         if (finalScore > 1.0) qualityText = "👑 대히트 예감!";
         else if (finalScore > 0.8) qualityText = "👍 아주 좋은데요?";
         else if (finalScore > 0.6) qualityText = "🤔 나쁘지 않아요.";
         else qualityText = "😥 개선이 필요해 보입니다...";
     }
-    return { finalScore, nameScore, isEasterEgg, easterEggBonus, qualityText };
+    return { finalScore, nameScore, isEasterEgg: isEasterEgg || isCrafted, easterEggBonus, qualityText };
 }
 function calculateNameScore(name) {
     if (!name.trim()) return 0.8;
@@ -325,46 +344,22 @@ function checkAndSetMarketTrend() {
     }
     UIManager.updateMarketTrend(gameState.marketTrend);
 }
-function saveRecipe(recipeName, manufactureCost) {
-    const recipeData = {
-        name: recipeName,
-        ...UIManager.getCurrentRecipeValues(),
-        timestamp: new Date().toISOString()
-    };
-    gameState.savedRecipes.unshift(recipeData);
-    if (gameState.savedRecipes.length > 20) {
-        gameState.savedRecipes.pop();
-    }
-}
-function loadRecipe(index) {
-    const recipe = gameState.savedRecipes[index];
-    if (!recipe) return;
-    confirmFlavorSelection(recipe.selectedFlavors);
-    setTimeout(() => {
-        UIManager.setRecipeValues(recipe);
-        UIManager.updateRecipeAndCost(gameState, FLAVORS);
-    }, 100);
-    UIManager.closeRecipeBook();
-    UIManager.logMessage(`'${recipe.name}' 레시피를 불러왔습니다!`, 'system');
-}
 function resetRecipeMaker() {
     delete gameState.recipe;
-    UIManager.updateSelectedFlavorsDisplay([], FLAVORS);
+    tempSelectedFlavors = [];
+    UIManager.updateSelectedFlavorsDisplay([]);
     UIManager.showRecipeCreationSteps(false);
     UIManager.resetSliders();
     UIManager.getRecipeNameInput().value = '';
 }
 function checkTutorial(taskId = 0, value = 0) {
-    if (!gameState.tutorial || gameState.tutorial.step === 'completed') return;
-    if (taskId === 1 && !gameState.tutorial.tasks[0].completed) {
-        completeTutorialTask(0);
-    } else if (taskId === 2 && !gameState.tutorial.tasks[1].completed) {
+    if (!gameState.tutorial || gameState.tutorial.tasks.every(t => t.completed)) return;
+    if (taskId === 1 && !gameState.tutorial.tasks[0].completed) completeTutorialTask(0);
+    else if (taskId === 2 && !gameState.tutorial.tasks[1].completed) {
         completeTutorialTask(1);
         checkTutorial(3, value);
     } else if (taskId === 3 && !gameState.tutorial.tasks[2].completed) {
-        if (gameState.monthlySales >= 100) {
-            completeTutorialTask(2);
-        }
+        if (gameState.monthlySales >= 100) completeTutorialTask(2);
     } else if (!gameState.tutorial.introSeen) {
         UIManager.showMentorMessage(TUTORIAL.messages[0]);
         gameState.tutorial.introSeen = true;
@@ -377,19 +372,13 @@ function completeTutorialTask(taskIndex) {
     gameState.cash += reward;
     UIManager.showMentorMessage(TUTORIAL.messages[taskIndex + 1]);
     UIManager.updateAllUI(gameState);
-    if(gameState.tutorial.tasks.every(t => t.completed)) {
-        gameState.tutorial.step = 'completed';
-        UIManager.hideTutorialSection();
-    }
+    if(gameState.tutorial.tasks.every(t => t.completed)) UIManager.hideTutorialSection();
 }
 function openFlavorPopup() {
     const isTutorialActive = gameState.tutorial && !gameState.tutorial.tasks[0].completed;
-    UIManager.renderFlavorGrid(FLAVORS, isTutorialActive);
+    UIManager.renderFlavorGrid(FLAVORS, isTutorialActive, handleFlavorClick, handleFlavorMouseover, handleFlavorMouseout);
     UIManager.updateFlavorGridSelection(gameState.recipe?.selectedFlavors || []);
-    UIManager.openFlavorPopup();
+    UIManager.openPopup(dom.flavor_popup);
 }
-function openRecipeBook() {
-    UIManager.renderRecipeBook(gameState.savedRecipes, FLAVORS);
-    UIManager.openRecipeBookPopup();
-}
+
 initGame();
