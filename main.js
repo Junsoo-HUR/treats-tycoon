@@ -22,6 +22,8 @@ try {
 
 // 사용할 DOM 요소 캐싱
 UIManager.cacheDOM(DOM_IDS);
+// 모든 이벤트 리스너를 페이지 로드 시점에 등록 (위치 변경)
+addEventListeners();
 
 // 새로운 유저를 위한 기본 게임 상태
 function getBaseGameState(user) {
@@ -51,7 +53,6 @@ function getBaseGameState(user) {
 // 인증 상태 감지
 if (auth) {
     onAuthStateChanged(auth, async user => {
-        console.log('✅ 1. onAuthStateChanged 발동! 사용자:', user ? user.uid : '없음'); // <--- 1번 로그
         if (user) {
             currentUser = user;
             await loadGameData(user);
@@ -89,7 +90,6 @@ async function handleAuth(action, credentials) {
 
 // 게임 데이터 로드
 async function loadGameData(user) {
-    console.log('✅ 2. loadGameData 시작...'); // <--- 2번 로그
     if (!db) {
         gameState = getBaseGameState(user);
         return;
@@ -99,7 +99,6 @@ async function loadGameData(user) {
 
     if (docSnap.exists()) {
         gameState = docSnap.data();
-        // 월간 초기화 로직
         const currentMonth = new Date().getMonth();
         if (gameState.lastLoginMonth !== currentMonth) {
             UIManager.logMessage('새로운 달이 시작되었습니다! 월간 매출과 회사 업그레이드가 초기화됩니다. 새로운 시즌을 시작하세요!', 'system');
@@ -112,18 +111,16 @@ async function loadGameData(user) {
         gameState = getBaseGameState(user);
         await saveGameData();
     }
-    // 일일 제조 횟수 초기화
+
     const today = new Date().toLocaleDateString('ko-KR');
     if (gameState.lastManufactureDate !== today) {
         gameState.dailyManufactureCount = 0;
         gameState.lastManufactureDate = today;
     }
-    // 데이터 무결성 검사
+
     if (!gameState.skillExp) gameState.skillExp = 0;
     if (!gameState.savedRecipes) gameState.savedRecipes = [];
     if (!gameState.tutorial) gameState.tutorial = getBaseGameState(user).tutorial;
-
-    console.log('✅ 3. loadGameData 완료! 가져온 데이터:', gameState); // <--- 3번 로그
 }
 
 // 게임 데이터 저장
@@ -156,10 +153,8 @@ function listenToLeaderboard() {
 
 // 게임 초기화
 function initGame(user) {
-    console.log('✅ 4. initGame 시작! 게임 화면을 표시합니다.'); // <--- 4번 로그
     UIManager.showGameScreen(user);
     UIManager.renderFlavorGrid(false, handleFlavorClick, handleFlavorMouseover, handleFlavorMouseout);
-    addEventListeners();
     UIManager.updateAllUI(gameState);
     listenToLeaderboard();
     checkTutorial();
@@ -266,7 +261,7 @@ async function createAndSellBatch() {
         return;
     }
     
-    let { finalScore, isEasterEgg, qualityText } = calculateFinalScore(recipeName, qualityScore);
+    let { finalScore } = calculateFinalScore(recipeName, qualityScore);
     const skillLevel = Math.floor(Math.log10(gameState.skillExp / 100 + 1)) + 1;
     let skillEventText = '';
     const skillRoll = Math.random();
@@ -296,6 +291,7 @@ async function createAndSellBatch() {
     gameState.monthlySales += revenue;
     gameState.skillExp += Math.max(10, Math.round(profit / 10));
     
+    const { qualityText } = calculateFinalScore(recipeName, finalScore);
     const logHTML = `
         <div class="border-b border-gray-700 pb-2 mb-2">
             <p class="font-bold text-lg">${recipeName} <span class="text-sm ${profit > 0 ? 'text-green-400' : 'text-red-400'}">(${profit >= 0 ? '+' : ''}${Math.round(profit)}$)</span></p>
@@ -368,7 +364,7 @@ function calculateFinalScore(recipeName, qualityScore) {
         else qualityText = "😥 개선이 필요해 보입니다...";
     }
     
-    return { finalScore: qualityScore * easterEggBonus, isEasterEgg, qualityText };
+    return { finalScore: qualityScore * easterEggBonus, qualityText };
 }
 
 // 회사 업그레이드
@@ -422,19 +418,15 @@ function checkTutorial() {
         return;
     }
 
-    // 1단계: 향료 선택 (완료되지 않았고, 레시피가 생성되었다면 완료 처리)
     if (!tutorial.tasks[0].completed && gameState.recipe && gameState.recipe.selectedFlavors.length > 0) {
         completeTutorialTask(0);
     }
-    // 2단계: 액상 제조 (1단계가 끝났고, 아직 2단계가 끝나지 않았으며, 제조 횟수가 1 이상이면 완료 처리)
     else if (tutorial.tasks[0].completed && !tutorial.tasks[1].completed && gameState.dailyManufactureCount > 0) {
         completeTutorialTask(1);
     }
-    // 3단계: 월간 매출 $1000 달성 (2단계가 끝났고, 3단계가 끝나지 않았으며, 매출이 1000 이상이면 완료 처리)
     else if (tutorial.tasks[1].completed && !tutorial.tasks[2].completed && gameState.monthlySales >= 1000) {
         completeTutorialTask(2);
     }
-    // 튜토리얼 시작 메시지 (위 조건에 아무것도 해당하지 않고, 인트로를 본 적이 없다면)
     else if (!tutorial.introSeen) {
         UIManager.showMentorMessage(TUTORIAL.messages[0]);
         tutorial.introSeen = true;
