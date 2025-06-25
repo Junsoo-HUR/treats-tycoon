@@ -23,7 +23,7 @@ try {
 }
 
 const dom = {};
-const ids = ['login-container', 'game-container', 'email-input', 'password-input', 'login-btn', 'signup-btn', 'guest-login-btn', 'logout-btn', 'auth-error', 'user-email', 'cash', 'monthly-sales', 'company-level', 'skill-level', 'best-recipe-name', 'log', 'vg-slider', 'nicotine-slider', 'cooling-slider', 'price-slider', 'vg-value', 'nicotine-value', 'cooling-value', 'price-value', 'summary-vg', 'summary-pg', 'summary-flavor', 'summary-nicotine', 'summary-cooling', 'recipe-name-input', 'create-batch-btn', 'market-trend', 'upgrades-container', 'open-flavor-popup-btn', 'selected-flavors-display', 'flavor-popup', 'close-flavor-popup-btn', 'flavor-grid', 'confirm-flavor-selection-btn', 'individual-flavor-sliders', 'ratio-section', 'naming-section', 'pricing-section', 'summary-section', 'manufacture-cost', 'open-leaderboard-popup-btn', 'leaderboard-popup', 'close-leaderboard-popup-btn', 'leaderboard-content', 'open-recipebook-popup-btn', 'recipebook-popup', 'close-recipebook-popup-btn', 'recipebook-content', 'open-guide-popup-btn'];
+const ids = ['login-container', 'game-container', 'email-input', 'password-input', 'login-btn', 'signup-btn', 'guest-login-btn', 'logout-btn', 'auth-error', 'user-email', 'cash', 'monthly-sales', 'company-level', 'skill-level', 'best-recipe-name', 'log', 'vg-slider', 'nicotine-slider', 'cooling-slider', 'price-slider', 'vg-value', 'nicotine-value', 'cooling-value', 'price-value', 'summary-vg', 'summary-pg', 'summary-flavor', 'summary-nicotine', 'summary-cooling', 'recipe-name-input', 'create-batch-btn', 'market-trend', 'upgrades-container', 'open-flavor-popup-btn', 'selected-flavors-display', 'flavor-popup', 'close-flavor-popup-btn', 'flavor-grid', 'confirm-flavor-selection-btn', 'individual-flavor-sliders', 'ratio-section', 'naming-section', 'pricing-section', 'summary-section', 'manufacture-cost', 'open-leaderboard-popup-btn', 'leaderboard-popup', 'close-leaderboard-popup-btn', 'leaderboard-content', 'open-recipebook-popup-btn', 'recipebook-popup', 'close-recipebook-popup-btn', 'recipebook-content', 'open-guide-popup-btn', 'tutorial-section', 'task-list', 'mentor-popup', 'mentor-message', 'close-mentor-popup-btn', 'bug-notice'];
 ids.forEach(id => {
     if (document.getElementById(id)) {
         dom[id.replace(/-/g, '_')] = document.getElementById(id);
@@ -45,6 +45,19 @@ let gameState = {};
 let currentUser = null;
 let unsubscribeLeaderboard = null;
 let tempSelectedFlavors = [];
+const TUTORIAL = {
+    tasks: [
+        { id: 1, text: "첫 향료 선택하기", completed: false, reward: 50 },
+        { id: 2, text: "첫 액상 제조하기", completed: false, reward: 100 },
+        { id: 3, text: "첫 수익 $100 달성하기", completed: false, reward: 250 },
+    ],
+    messages: [
+        "반갑네, 젊은 CEO! 나는 이 업계의 전설, '더쥬팩씨'라고 하네. 자네의 잠재력을 보고 찾아왔지. 우선 내 노하우가 담긴 '첫걸음 레시피'를 선물로 주겠네. '딸기'와 '바나나'를 섞어보는 건 어떤가?",
+        "좋아! 시작이 좋군! 첫 단추를 잘 끼웠으니, 이 자금($50)을 보태주겠네.",
+        "훌륭해! 첫 작품치고는 제법이군. 이 자금($100)으로 다음 레시피를 연구해보게.",
+        "굉장하군! 이제 자네도 어엿한 CEO야. 이 업그레이드 자금($250)으로 회사를 더 키워보게나!"
+    ]
+};
 
 function getBaseGameState() {
     return {
@@ -59,7 +72,8 @@ function getBaseGameState() {
         marketTrend: { category: null, duration: 0, bonus: 1.5 },
         lastLoginMonth: new Date().getMonth(),
         dailyManufactureCount: 0,
-        lastManufactureDate: new Date().toLocaleDateString('ko-KR')
+        lastManufactureDate: new Date().toLocaleDateString('ko-KR'),
+        tutorial: { tasks: JSON.parse(JSON.stringify(TUTORIAL.tasks)), step: 0, introSeen: false }
     };
 }
 if (auth) {
@@ -148,6 +162,7 @@ async function loadGameData(userId) {
     }
     if (!gameState.skillExp) gameState.skillExp = 0;
     if (!gameState.savedRecipes) gameState.savedRecipes = [];
+    if (!gameState.tutorial) gameState.tutorial = getBaseGameState().tutorial;
 }
 async function saveGameData(userId, isNewUser = false) {
     if (!userId) return;
@@ -182,31 +197,33 @@ function initGame() {
     addEventListeners();
     updateAllUI();
     listenToLeaderboard();
+    checkTutorial();
 }
 function addEventListeners() {
-    dom.open_flavor_popup_btn.addEventListener('click', () => {
-        tempSelectedFlavors = [...(gameState.recipe?.selectedFlavors || [])];
-        updateFlavorGridSelection();
-        dom.flavor_popup.classList.replace('hidden', 'flex');
-    });
+    dom.open_flavor_popup_btn.addEventListener('click', openFlavorPopup);
     dom.close_flavor_popup_btn.addEventListener('click', () => dom.flavor_popup.classList.replace('flex', 'hidden'));
     dom.confirm_flavor_selection_btn.addEventListener('click', confirmFlavorSelection);
     dom.open_leaderboard_popup_btn.addEventListener('click', () => dom.leaderboard_popup.classList.replace('hidden', 'flex'));
     dom.close_leaderboard_popup_btn.addEventListener('click', () => dom.leaderboard_popup.classList.replace('flex', 'hidden'));
+    dom.open_recipebook_popup_btn.addEventListener('click', openRecipeBook);
+    dom.close_recipebook_popup_btn.addEventListener('click', () => dom.recipebook_popup.classList.replace('flex', 'hidden'));
+    dom.recipebook_content.addEventListener('click', (e) => { if(e.target.dataset.recipeIndex !== undefined) loadRecipe(e.target.dataset.recipeIndex); });
     ['vg_slider', 'nicotine_slider', 'cooling_slider', 'price_slider'].forEach(key => dom[key].addEventListener('input', updateRecipeAndCost));
     dom.create_batch_btn.addEventListener('click', createAndSellBatch);
     dom.upgrades_container.addEventListener('click', e => { if (e.target.closest('button')?.dataset.key) buyUpgrade(e.target.closest('button').dataset.key); });
+    dom.close_mentor_popup_btn.addEventListener('click', () => dom.mentor_popup.classList.add('hidden'));
 }
-function renderFlavorGrid() {
-    dom.flavor_grid.innerHTML = FLAVORS.map(f => `
-        <div class="flavor-item flex flex-col items-center justify-center p-2 bg-gray-700 rounded-lg" data-flavor-name="${f.name}">
+function renderFlavorGrid(isTutorial = false) {
+    dom.flavor_grid.innerHTML = FLAVORS.map(f => {
+        const disabled = isTutorial && !['딸기', '바나나'].includes(f.name);
+        return `<div class="flavor-item flex flex-col items-center justify-center p-2 bg-gray-700 rounded-lg ${disabled ? 'opacity-50 cursor-not-allowed' : ''}" data-flavor-name="${f.name}">
             <span class="text-2xl">${f.icon}</span>
             <span class="text-xs mt-1 text-center">${f.name}</span>
-        </div>
-    `).join('');
+        </div>`
+    }).join('');
     dom.flavor_grid.addEventListener('click', (e) => {
         const item = e.target.closest('.flavor-item');
-        if (!item) return;
+        if (!item || item.classList.contains('opacity-50')) return;
         const flavorName = item.dataset.flavorName;
         const index = tempSelectedFlavors.indexOf(flavorName);
         if (index > -1) {
@@ -240,6 +257,7 @@ function confirmFlavorSelection() {
     renderIndividualFlavorSliders();
     updateRecipeAndCost();
     showRecipeCreationSteps();
+    checkTutorial(1); // 향료 선택 과제 완료 체크
 }
 function updateSelectedFlavorsDisplay() {
     const flavors = gameState.recipe?.selectedFlavors || [];
@@ -275,11 +293,12 @@ function updateAllUI() {
     dom.monthly_sales.textContent = `$${Math.round(gameState.monthlySales)}`;
     dom.best_recipe_name.textContent = gameState.bestRecipe.name;
     const skillLevel = Math.floor(Math.log10(gameState.skillExp / 100 + 1)) + 1;
-    gameState.companyLevel = Math.floor(Math.log2( (gameState.cash + gameState.monthlySales * 10) / 1000 + 1)) + 1;
+    gameState.companyLevel = Math.floor(Math.log2( (gameState.cash + gameState.monthlySales * 10) / 1000 + 1)) + 1; // 월간매출 가중치 적용
     dom.company_level.textContent = gameState.companyLevel;
     dom.skill_level.textContent = `Lv.${skillLevel}`;
     renderUpgrades();
     updateManufactureButton();
+    renderTutorialTasks();
 }
 function renderUpgrades() {
     dom.upgrades_container.innerHTML = Object.keys(gameState.upgrades).map(key => {
@@ -401,6 +420,7 @@ async function createAndSellBatch() {
     </div>`;
     logMessage(logHtml, 'game');
 
+    checkTutorial(2, profit);
     if (finalScore > gameState.bestRecipe.score) gameState.bestRecipe = { name: recipeName, score: finalScore };
     checkAndSetMarketTrend();
     
@@ -525,30 +545,108 @@ function logMessage(message, type = 'info') {
     else { div.textContent = message; div.className = typeClasses[type] || 'text-gray-400'; }
     dom.log.prepend(div);
 }
-function renderGuideContent() {
-    if (!dom.guide_content) return;
-    dom.guide_content.innerHTML = `
-        <h3>게임 목표</h3>
-        <p>당신의 목표는 최고의 액상을 만들어 돈을 벌고, 회사를 성장시켜 '리더보드' 1위에 오르는 것입니다. 맛, 시장 트렌드, 그리고 당신의 '제조 기술'까지 모든 것이 완벽해야 합니다.</p>
-        <h3>게임 규칙</h3>
-        <ul>
-            <li><strong>일일 제조 제한:</strong> 공정한 경쟁을 위해, 하루에 액상은 최대 <strong>20번</strong>까지만 제조할 수 있습니다. 이 횟수는 매일 자정(한국 시간 기준)에 초기화됩니다.</li>
-            <li><strong>월간 리더보드:</strong> 리더보드 순위는 '월간 매출'을 기준으로 매겨지며, 매월 1일 자정에 초기화됩니다.</li>
-        </ul>
-        <h3>액상 제조법</h3>
-        <p>1. <strong>향료 선택:</strong> 최대 5개의 향료를 조합하세요. 향료 아이콘으로 카테고리를 확인할 수 있습니다.</p>
-        <p>2. <strong>비율 조절:</strong> 선택한 향료 각각의 농도를 개별적으로 조절하여 레시피의 핵심 맛을 설계하세요. VG, 니코틴, 쿨링으로 액상의 특징을 완성합니다.</p>
-        <p>3. <strong>이름 & 가격:</strong> 멋진 이름을 짓고, 품질에 맞는 합리적인 가격을 책정하여 수익을 극대화하세요.</p>
-        <h3>심화 과정</h3>
-        <ul>
-            <li><strong>숨겨진 궁합:</strong> 특정 향료들 사이에는 특별한 시너지(보너스)와 충돌(페널티) 효과가 존재합니다. 수많은 조합을 실험하며 최고의 궁합을 찾아내세요!</li>
-            <li><strong>제조 기술:</strong> 액상을 만들수록 경험치가 쌓여 레벨이 오릅니다. 레벨이 높으면 가끔 '대성공!'이 터져 명작이 탄생합니다.</li>
-            <li><strong>타격감:</strong> 니코틴, 쿨링, 특정 향료(연초/디저트) 조합으로 타격감 점수를 높여 특정 고객층을 공략할 수 있습니다.</li>
-            <li><strong>입호흡/폐호흡:</strong> VG/PG 비율에 따라 액상의 종류가 결정되고, 그에 맞는 최적의 니코틴 레벨이 달라집니다. (입호흡: 9~20mg, 폐호흡: 3~6mg)</li>
-        </ul>
-        <h3>전설의 레시피</h3>
-        <p>세상에는 완벽한 비율과 이름으로 만들어진 두 개의 전설적인 '히든 레시피'가 존재합니다: <strong>고트애플 (Goat Apple)</strong>과 <strong>소시오피치 (Socio-Peach)</strong>. 각 레시피는 입호흡과 폐호흡 버전이 따로 있습니다. 소문을 단서로 이 레시피들을 재현해 보세요!</p>
-    `;
+function renderTutorialTasks() {
+    if (!gameState.tutorial) return;
+    const allTasksCompleted = gameState.tutorial.tasks.every(t => t.completed);
+    dom.tutorial_section.classList.toggle('hidden', allTasksCompleted);
+    if (allTasksCompleted) return;
+
+    dom.task_list.innerHTML = gameState.tutorial.tasks.map(task => `
+        <li class="flex items-center ${task.completed ? 'text-gray-500 line-through' : ''}">
+            <span class="mr-2">${task.completed ? '✅' : '⬜️'}</span>
+            <span>${task.text}</span>
+        </li>
+    `).join('');
+}
+function showMentorMessage(message, duration = 5000) {
+    dom.mentor_message.textContent = message;
+    dom.mentor_popup.classList.remove('hidden');
+    setTimeout(() => {
+        dom.mentor_popup.classList.add('hidden');
+    }, duration);
+}
+function checkTutorial(taskId, value = 0) {
+    if (!gameState.tutorial || gameState.tutorial.step === 'completed') return;
+
+    if (taskId === 1 && !gameState.tutorial.tasks[0].completed) {
+        completeTutorialTask(0);
+    } else if (taskId === 2 && !gameState.tutorial.tasks[1].completed) {
+        completeTutorialTask(1);
+        checkTutorial(3, value); // 수익 과제도 바로 체크
+    } else if (taskId === 3 && !gameState.tutorial.tasks[2].completed) {
+        if (gameState.monthlySales >= 100) {
+            completeTutorialTask(2);
+        }
+    } else if (!gameState.tutorial.introSeen) {
+        showMentorMessage(TUTORIAL.messages[0]);
+        gameState.tutorial.introSeen = true;
+    }
+}
+function completeTutorialTask(taskIndex) {
+    if (gameState.tutorial.tasks[taskIndex].completed) return;
+    gameState.tutorial.tasks[taskIndex].completed = true;
+    const reward = TUTORIAL.tasks[taskIndex].reward;
+    gameState.cash += reward;
+    showMentorMessage(TUTORIAL.messages[taskIndex + 1]);
+    updateAllUI();
+    const allCompleted = gameState.tutorial.tasks.every(t => t.completed);
+    if(allCompleted){
+        gameState.tutorial.step = 'completed';
+    }
+}
+function openFlavorPopup() {
+    tempSelectedFlavors = [...(gameState.recipe?.selectedFlavors || [])];
+    const isTutorialActive = gameState.tutorial && !gameState.tutorial.tasks[0].completed;
+    renderFlavorGrid(isTutorialActive);
+    updateFlavorGridSelection();
+    dom.flavor_popup.classList.replace('hidden', 'flex');
+}
+function openRecipeBook() {
+    renderRecipeBook();
+    dom.recipebook_popup.classList.replace('hidden', 'flex');
+}
+function renderRecipeBook() {
+    if (gameState.savedRecipes.length === 0) {
+        dom.recipebook_content.innerHTML = '<p class="text-center text-gray-400">아직 저장된 레시피가 없습니다.</p>';
+        return;
+    }
+    dom.recipebook_content.innerHTML = gameState.savedRecipes.map((recipe, index) => {
+        const flavorsText = recipe.selectedFlavors.map(name => {
+            const flavor = FLAVORS.find(f => f.name === name);
+            return `<span class="bg-gray-600 text-white text-xs font-semibold mr-2 px-2.5 py-0.5 rounded-full">${flavor.icon} ${name}</span>`;
+        }).join('');
+        return `<div class="bg-gray-700 p-4 rounded-lg">
+                <div class="flex justify-between items-center">
+                    <p class="font-bold text-lg text-yellow-300">${recipe.name}</p>
+                    <button data-recipe-index="${index}" class="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-bold py-1 px-3 rounded-lg btn">불러오기</button>
+                </div>
+                <div class="text-xs text-gray-400 mt-2">${flavorsText}</div>
+            </div>`;
+    }).join('');
+}
+function loadRecipe(index) {
+    const recipe = gameState.savedRecipes[index];
+    if (!recipe) return;
+
+    tempSelectedFlavors = recipe.selectedFlavors;
+    confirmFlavorSelection();
+    
+    setTimeout(() => {
+        gameState.recipe.flavorRatios = recipe.flavorRatios;
+        dom.vg_slider.value = recipe.vg;
+        dom.nicotine_slider.value = recipe.nicotine;
+        dom.cooling_slider.value = recipe.cooling;
+        dom.price_slider.value = recipe.price;
+        dom.recipe_name_input.value = recipe.name;
+        document.querySelectorAll('.flavor-ratio-slider').forEach(slider => {
+            const name = slider.dataset.flavorName;
+            slider.value = recipe.flavorRatios[name] || 5;
+        });
+        updateRecipeAndCost();
+    }, 100);
+
+    dom.recipebook_popup.classList.replace('flex', 'hidden');
+    logMessage(`'${recipe.name}' 레시피를 불러왔습니다!`, 'system');
 }
 function updateManufactureButton() {
     if (!dom.create_batch_btn) return;
@@ -561,4 +659,5 @@ function updateManufactureButton() {
         dom.create_batch_btn.innerHTML = `제조 및 판매 (${remaining}회 남음) (비용: <span id="manufacture-cost">${cost}</span>)`;
     }
 }
+
 initGame();
