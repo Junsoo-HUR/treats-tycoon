@@ -239,7 +239,7 @@ export function updateManufactureButton(gameState) {
 export function getCurrentRecipeValues() {
     return {
         vg: parseInt(dom.vg_slider.value),
-        nicotine: parseInt(dom.nicotine_slider.value),
+        nicotine: parseFloat(dom.nicotine_slider.value),
         cooling: parseInt(dom.cooling_slider.value),
         price: parseInt(dom.price_slider.value),
         flavorRatios: {}
@@ -280,7 +280,7 @@ export function showMentorMessage(message, duration = 5000) {
     if (!dom.mentor_message || !dom.mentor_popup) return;
     dom.mentor_message.textContent = message;
     dom.mentor_popup.classList.remove('hidden', 'animate-bounce');
-    void dom.mentor_popup.offsetWidth; // 리플로우 강제
+    void dom.mentor_popup.offsetWidth;
     dom.mentor_popup.classList.add('animate-bounce');
     setTimeout(() => {
         dom.mentor_popup.classList.add('hidden');
@@ -317,7 +317,18 @@ export function hideFlavorTooltip() {
     if (dom.flavor_tooltip) dom.flavor_tooltip.classList.add('hidden');
 }
 
-// --- 이벤트 리스너 등록 함수 (오류 수정) ---
+// --- 주문 시스템 UI ---
+export function renderCustomerOrder(order) {
+    if (dom.customer_order) {
+        if (order) {
+            dom.customer_order.textContent = order.text;
+        } else {
+            dom.customer_order.textContent = '완료! 다음 주문을 기다립니다.';
+        }
+    }
+}
+
+// --- 이벤트 리스너 등록 함수 ---
 export function addAuthEventListeners(onLogin, onSignup, onGuestLogin) {
     if (dom.login_btn) dom.login_btn.addEventListener('click', onLogin);
     if (dom.signup_btn) dom.signup_btn.addEventListener('click', onSignup);
@@ -334,7 +345,6 @@ export function addCommonEventListeners(
     onMainSliderChange,
     onLogout
 ) {
-    // 팝업 버튼
     if (dom.open_flavor_popup_btn) dom.open_flavor_popup_btn.addEventListener('click', onOpenFlavorPopup);
     if (dom.close_flavor_popup_btn) dom.close_flavor_popup_btn.addEventListener('click', () => closePopup(dom.flavor_popup));
     if (dom.confirm_flavor_selection_btn) dom.confirm_flavor_selection_btn.addEventListener('click', onConfirmFlavorSelection);
@@ -343,17 +353,14 @@ export function addCommonEventListeners(
     if (dom.close_leaderboard_popup_btn) dom.close_leaderboard_popup_btn.addEventListener('click', onCloseLeaderboard);
     if (dom.close_mentor_popup_btn) dom.close_mentor_popup_btn.addEventListener('click', () => dom.mentor_popup.classList.add('hidden'));
 
-    // 메인 게임 동작 버튼
     if (dom.create_batch_btn) dom.create_batch_btn.addEventListener('click', onCreateBatch);
     if (dom.logout_btn) dom.logout_btn.addEventListener('click', onLogout);
     
-    // 메인 슬라이더 (VG, 니코틴 등)
     const mainSliders = [dom.vg_slider, dom.nicotine_slider, dom.cooling_slider, dom.price_slider];
     mainSliders.forEach(slider => {
         if (slider) slider.addEventListener('input', onMainSliderChange);
     });
 
-    // 동적으로 생성되는 업그레이드 버튼 처리
     if (dom.upgrades_container) {
         dom.upgrades_container.addEventListener('click', (e) => {
             const button = e.target.closest('button[data-key]');
