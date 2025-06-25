@@ -139,4 +139,43 @@ export const TUTORIAL = {
     ]
 };
 
-export const DOM_IDS = ['login-container', 'game-container', 'email-input', 'password-input', 'login-btn', 'signup-btn', 'guest-login-btn', 'logout-btn', 'auth-error', 'user-email', 'cash', 'monthly-sales', 'company-level', 'skill-level', 'best-recipe-name', 'log', 'vg-slider', 'nicotine-slider', 'cooling-slider', 'price-slider', 'vg-value', 'nicotine-value', 'cooling-value', 'price-value', 'summary-vg', 'summary-pg', 'summary-flavor', 'summary-nicotine', 'summary-cooling', 'recipe-name-input', 'create-batch-btn', 'market-trend', 'upgrades-container', 'open-flavor-popup-btn', 'selected-flavors-display', 'flavor-popup', 'close-flavor-popup-btn', 'flavor-grid', 'confirm-flavor-selection-btn', 'individual-flavor-sliders', 'ratio-section', 'naming-section', 'pricing-section', 'summary-section', 'manufacture-cost', 'open-leaderboard-popup-btn', 'leaderboard-popup', 'close-leaderboard-popup-btn', 'leaderboard-content', 'tutorial-section', 'task-list', 'mentor-popup', 'mentor-message', 'close-mentor-popup-btn', 'flavor-tooltip'];
+export const DOM_IDS = [
+    'login-container', 'game-container', 'email-input', 'password-input', 'login-btn', 'signup-btn', 
+    'guest-login-btn', 'logout-btn', 'auth-error', 'user-email', 'cash', 'monthly-sales', 
+    'company-level', 'skill-level', 'best-recipe-name', 'log', 'vg-slider', 'nicotine-slider', 
+    'cooling-slider', 'price-slider', 'vg-value', 'nicotine-value', 'cooling-value', 'price-value', 
+    'summary-vg', 'summary-pg', 'summary-flavor', 'summary-nicotine', 'summary-cooling', 
+    'recipe-name-input', 'create-batch-btn', 'market-trend', 'upgrades-container', 
+    'open-flavor-popup-btn', 'selected-flavors-display', 'flavor-popup', 'close-flavor-popup-btn', 
+    'flavor-grid', 'confirm-flavor-selection-btn', 'individual-flavor-sliders', 'ratio-section', 
+    'naming-section', 'pricing-section', 'summary-section', 'manufacture-cost', 
+    'open-leaderboard-popup-btn', 'leaderboard-popup', 'close-leaderboard-popup-btn', 
+    'leaderboard-content', 'tutorial-section', 'task-list', 'mentor-popup', 'mentor-message', 
+    'close-mentor-popup-btn', 'flavor-tooltip', 'customer-order'
+];
+
+// 주문 생성을 위한 기준 '부품' 목록
+export const ORDER_CRITERIA = {
+    category: [
+        { text: "상큼한 과일 맛", criteria: { category: '과일' } },
+        { text: "달콤한 디저트 맛", criteria: { category: '디저트' } },
+        { text: "시원한 멘솔 계열", criteria: { category: '멘솔' } },
+        { text: "청량한 음료수 맛", criteria: { category: '음료' } },
+        { text: "묵직한 연초 맛", criteria: { category: '연초' } }
+    ],
+    nicotine: [
+        { text: "니코틴은 약하게 (6mg 이하)", criteria: { nicotine_max: 6 } },
+        { text: "니코틴은 강하게 (9mg 이상)", criteria: { nicotine_min: 9 } },
+        { text: "니코틴은 정확히 3mg", criteria: { nicotine_exact: 3 } },
+        { text: "니코틴은 정확히 9.8mg", criteria: { nicotine_exact: 9.8 } }
+    ],
+    cooling: [
+        { text: "쿨링이 거의 없는 걸로", criteria: { cooling_max: 2 } },
+        { text: "적당히 시원하게 (3~5)", criteria: { cooling_min: 3, cooling_max: 5 } },
+        { text: "아주 시원하게 (6 이상)", criteria: { cooling_min: 6 } }
+    ],
+    complexity: [
+        { text: "단순한 맛이 좋아요 (향료 2개 이하)", criteria: { flavor_count_max: 2 } },
+        { text: "풍부하고 복잡한 맛으로 (향료 4개 이상)", criteria: { flavor_count_min: 4 } }
+    ]
+};
