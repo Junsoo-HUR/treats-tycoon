@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, limit, onSnapshot, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-import { firebaseConfig, FLAVORS, SYNERGY_SCORES, CONFLICT_SCORES, CRAFTING_RECIPES, TUTORIAL, DOM_IDS } from './game-data.js';
+import { firebaseConfig, FLAVORS, SYNERGY_SCORES, CONFLICT_SCORES, CRAFTING_RECIPES, TUTORIAL, DOM_IDS, ORDER_CRITERIA } from './game-data.js';
 import * as UIManager from './ui-manager.js';
 
 let db, auth;
@@ -20,9 +20,8 @@ try {
     UIManager.showAuthError(`서버 연결 실패: ${e.code || e.message}`);
 }
 
-// 사용할 DOM 요소 캐싱
+// 사용할 DOM 요소 캐싱 및 이벤트 리스너 등록
 UIManager.cacheDOM(DOM_IDS);
-// 모든 이벤트 리스너를 페이지 로드 시점에 등록 (위치 변경)
 addEventListeners();
 
 // 새로운 유저를 위한 기본 게임 상태
@@ -46,6 +45,7 @@ function getBaseGameState(user) {
         dailyManufactureCount: 0,
         lastManufactureDate: new Date().toLocaleDateString('ko-KR'),
         tutorial: { tasks: JSON.parse(JSON.stringify(TUTORIAL.tasks)), introSeen: false },
+        activeOrder: null,
         createdAt: serverTimestamp()
     };
 }
@@ -68,7 +68,7 @@ if (auth) {
     });
 }
 
-// 인증 처리 (로그인, 회원가입, 게스트)
+// 인증 처리
 async function handleAuth(action, credentials) {
     if (!auth) {
         UIManager.showAuthError("서버 연결이 필요합니다.");
@@ -101,7 +101,7 @@ async function loadGameData(user) {
         gameState = docSnap.data();
         const currentMonth = new Date().getMonth();
         if (gameState.lastLoginMonth !== currentMonth) {
-            UIManager.logMessage('새로운 달이 시작되었습니다! 월간 매출과 회사 업그레이드가 초기화됩니다. 새로운 시즌을 시작하세요!', 'system');
+            UIManager.logMessage('새로운 달이 시작되었습니다! 월간 매출과 회사 업그레이드가 초기화됩니다.', 'system');
             const baseState = getBaseGameState(user);
             gameState.monthlySales = baseState.monthlySales;
             gameState.upgrades = baseState.upgrades;
@@ -121,6 +121,7 @@ async function loadGameData(user) {
     if (!gameState.skillExp) gameState.skillExp = 0;
     if (!gameState.savedRecipes) gameState.savedRecipes = [];
     if (!gameState.tutorial) gameState.tutorial = getBaseGameState(user).tutorial;
+    if (gameState.activeOrder === undefined) gameState.activeOrder = null;
 }
 
 // 게임 데이터 저장
@@ -132,6 +133,63 @@ async function saveGameData() {
     } catch (error) {
         console.error("게임 데이터 저장 실패:", error);
     }
+}
+
+// 주문 생성 및 확인 함수
+function generateNewOrder() {
+    if (gameState.activeOrder === null) {
+        const criteriaCount = Math.floor(Math.random() * 2) + 1; // 1~2개의 조건 조합
+        const selectedParts = [];
+        const finalCriteria = {};
+        let finalText = "손님: ";
+        
+        const availableCategories = Object.keys(ORDER_CRITERIA);
+
+        for (let i = 0; i < criteriaCount; i++) {
+            if (availableCategories.length === 0) break;
+            
+            const randomCategoryIndex = Math.floor(Math.random() * availableCategories.length);
+            const categoryKey = availableCategories.splice(randomCategoryIndex, 1)[0];
+            
+            const parts = ORDER_CRITERIA[categoryKey];
+            const randomPart = parts[Math.floor(Math.random() * parts.length)];
+            selectedParts.push(randomPart);
+        }
+
+        selectedParts.forEach((part, index) => {
+            Object.assign(finalCriteria, part.criteria);
+            finalText += part.text + (index === selectedParts.length - 1 ? "" : ", ");
+        });
+        finalText += "로 만들어주세요!";
+
+        const newOrder = {
+            id: Date.now(),
+            text: finalText,
+            criteria: finalCriteria
+        };
+
+        gameState.activeOrder = newOrder;
+        UIManager.renderCustomerOrder(gameState.activeOrder);
+    }
+}
+
+function checkOrderCompletion(recipe, order) {
+    if (!order) return false;
+
+    const criteria = order.criteria;
+    const recipeCategories = new Set(recipe.selectedFlavors.map(name => FLAVORS.find(f => f.name === name).category));
+    const values = UIManager.getCurrentRecipeValues();
+
+    if (criteria.category && !recipeCategories.has(criteria.category)) return false;
+    if (criteria.nicotine_max && values.nicotine > criteria.nicotine_max) return false;
+    if (criteria.nicotine_min && values.nicotine < criteria.nicotine_min) return false;
+    if (criteria.nicotine_exact && values.nicotine !== criteria.nicotine_exact) return false;
+    if (criteria.cooling_max && values.cooling > criteria.cooling_max) return false;
+    if (criteria.cooling_min && values.cooling < criteria.cooling_min) return false;
+    if (criteria.flavor_count_min && recipe.selectedFlavors.length < criteria.flavor_count_min) return false;
+    if (criteria.flavor_count_max && recipe.selectedFlavors.length > criteria.flavor_count_max) return false;
+
+    return true;
 }
 
 // 리더보드 데이터 수신
@@ -158,6 +216,8 @@ function initGame(user) {
     UIManager.updateAllUI(gameState);
     listenToLeaderboard();
     checkTutorial();
+    generateNewOrder();
+    UIManager.renderCustomerOrder(gameState.activeOrder);
 }
 
 // 모든 이벤트 리스너 등록
@@ -239,8 +299,9 @@ function confirmFlavorSelection() {
 
 // 액상 제조 및 판매
 async function createAndSellBatch() {
+    if (!gameState.recipe) { UIManager.logMessage('❌ 먼저 향료를 선택하고 레시피를 만들어주세요.', 'error'); return; }
     if (gameState.dailyManufactureCount >= 20) {
-        UIManager.logMessage('하루 최대 제조 횟수(20회)에 도달했습니다. 내일 다시 시도해주세요.', 'error'); return;
+        UIManager.logMessage('하루 최대 제조 횟수(20회)에 도달했습니다.', 'error'); return;
     }
     const manufactureCost = UIManager.getCurrentCost();
     if (gameState.cash < manufactureCost) {
@@ -276,7 +337,7 @@ async function createAndSellBatch() {
     const setPrice = UIManager.getCurrentRecipeValues().price;
     const optimalPrice = Math.round(15 + qualityScore * 20); 
     const priceRatio = Math.max(0.1, setPrice / optimalPrice);
-    const salesVolume = Math.round((20 * finalScore) / Math.pow(priceRatio, 1.5));
+    let salesVolume = Math.round((20 * finalScore) / Math.pow(priceRatio, 1.5));
     
     let revenue = salesVolume * setPrice * (1 + gameState.upgrades.marketing.bonus);
     let trendBonusText = '';
@@ -286,6 +347,15 @@ async function createAndSellBatch() {
         trendBonusText = ` <span class="text-green-300 font-bold">(트렌드 보너스! x${gameState.marketTrend.bonus})</span>`;
     }
 
+    if (checkOrderCompletion(gameState.recipe, gameState.activeOrder)) {
+        const bonus = revenue * 1.5;
+        revenue += bonus;
+        UIManager.logMessage(`🎉 특별 주문 성공! 보너스 $${Math.round(bonus)} 획득!`, 'system');
+        gameState.activeOrder = null;
+        UIManager.renderCustomerOrder(null);
+        setTimeout(generateNewOrder, 3000);
+    }
+    
     const profit = revenue - manufactureCost;
     gameState.cash += revenue;
     gameState.monthlySales += revenue;
@@ -390,7 +460,7 @@ function checkAndSetMarketTrend() {
             UIManager.logMessage('🔔 시장 트렌드가 초기화되었습니다.', 'system');
         }
     } else if (Math.random() < 0.2) {
-        const trendCategories = ['과일', '디저트', '멘솔', '음료', '연초'];
+        const trendCategories = ['과일', '디저트', '멘솔', '음료', '연초', '특별'];
         gameState.marketTrend.category = trendCategories[Math.floor(Math.random() * trendCategories.length)];
         gameState.marketTrend.duration = 5;
         UIManager.logMessage(`🔔 시장 뉴스: 지금은 '${gameState.marketTrend.category}' 계열이 대유행! (x${gameState.marketTrend.bonus} 보너스)`, 'trend');
@@ -411,7 +481,7 @@ function resetRecipeMaker() {
     UIManager.getRecipeNameInput().value = '';
 }
 
-// 튜토리얼 진행도 확인 (개선된 로직)
+// 튜토리얼 진행도 확인
 function checkTutorial() {
     const tutorial = gameState.tutorial;
     if (!tutorial || tutorial.tasks.every(t => t.completed)) {
@@ -424,7 +494,7 @@ function checkTutorial() {
     else if (tutorial.tasks[0].completed && !tutorial.tasks[1].completed && gameState.dailyManufactureCount > 0) {
         completeTutorialTask(1);
     }
-    else if (tutorial.tasks[1].completed && !tutorial.tasks[2].completed && gameState.monthlySales >= 1000) {
+    else if (tutorial.tasks[1].completed && !tutorial.tasks[2].completed && gameState.monthlySales >= 100) {
         completeTutorialTask(2);
     }
     else if (!tutorial.introSeen) {
