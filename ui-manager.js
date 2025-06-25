@@ -1,9 +1,8 @@
 import { FLAVORS, TUTORIAL } from './game-data.js';
 
 const dom = {};
-const ids = ['login-container', 'game-container', 'email-input', 'password-input', 'login-btn', 'signup-btn', 'guest-login-btn', 'logout-btn', 'auth-error', 'user-email', 'cash', 'monthly-sales', 'company-level', 'skill-level', 'best-recipe-name', 'log', 'vg-slider', 'nicotine-slider', 'cooling-slider', 'price-slider', 'vg-value', 'nicotine-value', 'cooling-value', 'price-value', 'summary-vg', 'summary-pg', 'summary-flavor', 'summary-nicotine', 'summary-cooling', 'recipe-name-input', 'create-batch-btn', 'market-trend', 'upgrades-container', 'open-flavor-popup-btn', 'selected-flavors-display', 'flavor-popup', 'close-flavor-popup-btn', 'flavor-grid', 'confirm-flavor-selection-btn', 'individual-flavor-sliders', 'ratio-section', 'naming-section', 'pricing-section', 'summary-section', 'manufacture-cost', 'open-leaderboard-popup-btn', 'leaderboard-popup', 'close-leaderboard-popup-btn', 'leaderboard-content', 'open-recipebook-popup-btn', 'recipebook-popup', 'close-recipebook-popup-btn', 'recipebook-content', 'tutorial-section', 'task-list', 'mentor-popup', 'mentor-message', 'close-mentor-popup-btn', 'bug-notice', 'flavor-tooltip'];
 
-export function cacheDOM() {
+export function cacheDOM(ids) {
     ids.forEach(id => {
         if (document.getElementById(id)) {
             dom[id.replace(/-/g, '_')] = document.getElementById(id);
@@ -11,6 +10,7 @@ export function cacheDOM() {
     });
 }
 
+// --- 화면 전환 함수 ---
 export function showLoginScreen() {
     dom.login_container.classList.remove('hidden');
     dom.login_container.classList.add('flex');
@@ -25,18 +25,16 @@ export function showGameScreen(user) {
     dom.game_container.classList.remove('hidden');
 }
 
+// --- 인증 UI 함수 ---
 export function showAuthError(message) {
-    if (dom.auth_error) dom.auth_error.textContent = message;
+    if(dom.auth_error) dom.auth_error.textContent = message;
 }
-
 export function clearAuthError() {
-    if (dom.auth_error) dom.auth_error.textContent = '';
+    if(dom.auth_error) dom.auth_error.textContent = '';
 }
-
 export function getAuthInput() {
     return { email: dom.email_input.value, password: dom.password_input.value };
 }
-
 export function handleAuthError(error) {
     let errorMessage = "오류가 발생했습니다.";
     switch (error.code) {
@@ -50,6 +48,16 @@ export function handleAuthError(error) {
     dom.auth_error.textContent = errorMessage;
 }
 
+// --- 팝업 관리 함수 ---
+export function openPopup(popupElement) {
+    popupElement.classList.replace('hidden', 'flex');
+}
+
+export function closePopup(popupElement) {
+    popupElement.classList.replace('flex', 'hidden');
+}
+
+// --- 메인 UI 렌더링 함수 ---
 export function updateAllUI(gameState) {
     if (!gameState || !Object.keys(gameState).length) return;
     dom.cash.textContent = `$${Math.round(gameState.cash)}`;
@@ -73,7 +81,7 @@ export function renderUpgrades(gameState) {
             <div class="bg-gray-900 p-4 rounded-lg">
                 <div class="flex justify-between items-center mb-2">
                     <h4 class="font-bold">${upg.name} (Lv.${upg.level})</h4>
-                    <p class="text-sm text-gray-400">${upg.name.split(" ")[1]} +${Math.round(upg.bonus * 100)}%</p>
+                    <p class="text-sm text-gray-400">${upg.name.split(" ")[1]} +${Math.round(upg.bonus*100)}%</p>
                 </div>
                 <button data-key="${key}" class="w-full bg-indigo-600 text-white font-bold py-2 px-3 rounded-lg btn" ${isMax || !canAfford ? 'disabled' : ''}>
                     ${isMax ? 'MAX 레벨' : `업그레이드: $${upg.cost}`}
@@ -95,10 +103,9 @@ export function renderLeaderboard(players, isGuest, currentUserId, isError = fal
         dom.leaderboard_content.innerHTML = '<p class="text-center text-gray-400">아직 순위가 없습니다.</p>';
         return;
     }
-    dom.leaderboard_content.innerHTML = snapshot.docs.map((doc, index) => {
-            const data = doc.data();
-            return `<div class="flex justify-between items-center p-2 rounded ${data.uid === currentUser?.uid ? 'bg-indigo-500' : ''}"><div class="flex items-center"><span class="font-bold w-6">${index + 1}.</span><span class="truncate">${data.email || '익명'}</span></div><span class="font-bold text-green-400">$${Math.round(data.monthlySales || 0)}</span></div>`;
-        }).join('');
+    dom.leaderboard_content.innerHTML = players.map((data, index) => {
+        return `<div class="flex justify-between items-center p-2 rounded ${data.uid === currentUserId ? 'bg-indigo-500' : ''}"><div class="flex items-center"><span class="font-bold w-6">${index + 1}.</span><span class="truncate">${data.email || '익명'}</span></div><span class="font-bold text-green-400">$${Math.round(data.monthlySales || 0)}</span></div>`;
+    }).join('');
 }
 
 export function logMessage(message, type = 'info') {
@@ -111,18 +118,18 @@ export function logMessage(message, type = 'info') {
     dom.log.prepend(div);
 }
 
-export function renderFlavorGrid(isTutorial, onFlavorClick) {
+// --- 제조 관련 UI ---
+export function renderFlavorGrid(isTutorial, onFlavorClick, onMouseOver, onMouseOut) {
     dom.flavor_grid.innerHTML = FLAVORS.map(f => {
         const disabled = isTutorial && !['딸기', '바나나'].includes(f.name);
         return `<div class="flavor-item flex flex-col items-center justify-center p-2 bg-gray-700 rounded-lg ${disabled ? 'opacity-50 cursor-not-allowed' : ''}" data-flavor-name="${f.name}">
-            <span class="text-2xl">${f.icon}</span>
-            <span class="text-xs mt-1 text-center">${f.name}</span>
-        </div>`;
+            <span class="text-2xl pointer-events-none">${f.icon}</span>
+            <span class="text-xs mt-1 text-center pointer-events-none">${f.name}</span>
+        </div>`
     }).join('');
-    dom.flavor_grid.removeEventListener('click', onFlavorClick);
     dom.flavor_grid.addEventListener('click', onFlavorClick);
-    dom.flavor_grid.addEventListener('mouseover', showFlavorTooltip);
-    dom.flavor_grid.addEventListener('mouseout', hideFlavorTooltip);
+    dom.flavor_grid.addEventListener('mouseover', onMouseOver);
+    dom.flavor_grid.addEventListener('mouseout', onMouseOut);
 }
 
 export function updateFlavorGridSelection(tempSelectedFlavors) {
@@ -144,14 +151,147 @@ export function updateSelectedFlavorsDisplay(selectedFlavors) {
 }
 
 export function renderIndividualFlavorSliders(selectedFlavors, onSliderChange) {
-    dom.individual_flavor_sliders.innerHTML = flavors.map(name => `
+    dom.individual_flavor_sliders.innerHTML = selectedFlavors.map(name => `
         <div>
             <label for="flavor-slider-${name}" class="flex justify-between text-xs"><span>${name}</span><span id="flavor-value-${name}" class="font-bold text-indigo-300">5%</span></label>
             <input id="flavor-slider-${name}" data-flavor-name="${name}" type="range" min="1" max="20" value="5" class="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer slider-thumb flavor-ratio-slider">
         </div>
     `).join('');
     document.querySelectorAll('.flavor-ratio-slider').forEach(slider => {
-        slider.removeEventListener('input', onSliderChange);
         slider.addEventListener('input', onSliderChange);
     });
+}
+
+export function showRecipeCreationSteps(show) {
+    dom.ratio_section.classList.toggle('hidden', !show);
+    dom.naming_section.classList.toggle('hidden', !show);
+    dom.pricing_section.classList.toggle('hidden', !show);
+    dom.summary_section.classList.toggle('hidden', !show);
+    dom.create_batch_btn.disabled = !show;
+}
+
+export function updateRecipeAndCost(gameState, onSliderChange) {
+    if (!gameState.recipe) return;
+    const values = getCurrentRecipeValues();
+    let totalFlavorPerc = 0;
+    document.querySelectorAll('.flavor-ratio-slider').forEach(slider => {
+        const perc = parseInt(slider.value);
+        totalFlavorPerc += perc;
+        values.flavorRatios[slider.dataset.flavorName] = perc;
+        document.getElementById(`flavor-value-${slider.dataset.flavorName}`).textContent = `${perc}%`;
+    });
+    values.pg = 100 - values.vg - totalFlavorPerc;
+
+    dom.vg_value.textContent = `${values.vg}%`;
+    dom.nicotine_value.textContent = `${values.nicotine}mg`;
+    dom.cooling_value.textContent = `${values.cooling}`;
+    dom.price_value.textContent = `$${values.price}`;
+    
+    dom.summary_vg.textContent = `${values.vg}%`;
+    dom.summary_pg.textContent = `${values.pg < 0 ? 'Error!' : `${values.pg}%`}`;
+    dom.summary_pg.classList.toggle('text-red-500', values.pg < 0);
+    dom.summary_flavor.textContent = `${totalFlavorPerc}%`;
+    dom.summary_nicotine.textContent = `${values.nicotine}mg`;
+    dom.summary_cooling.textContent = `${values.cooling}`;
+
+    const cost = 10 + (gameState.recipe.selectedFlavors.length * 5) + (values.nicotine * 0.5) + (values.cooling * 0.5) + (totalFlavorPerc * 0.2);
+    dom.manufacture_cost.textContent = `$${Math.round(cost)}`;
+    dom.create_batch_btn.disabled = values.pg < 0;
+    updateManufactureButton(gameState);
+}
+
+export function updateManufactureButton(gameState) {
+    if (!dom.create_batch_btn) return;
+    const remaining = 20 - (gameState.dailyManufactureCount || 0);
+    if (remaining <= 0) {
+        dom.create_batch_btn.textContent = '일일 제조 횟수 소진';
+        dom.create_batch_btn.disabled = true;
+    } else {
+        const cost = dom.manufacture_cost.textContent;
+        dom.create_batch_btn.innerHTML = `제조 및 판매 (${remaining}회 남음) (비용: <span id="manufacture-cost">${cost}</span>)`;
+    }
+}
+
+export function getCurrentRecipeValues() {
+    return {
+        vg: parseInt(dom.vg_slider.value),
+        nicotine: parseInt(dom.nicotine_slider.value),
+        cooling: parseInt(dom.cooling_slider.value),
+        price: parseInt(dom.price_slider.value),
+        flavorRatios: {}
+    };
+}
+
+export function getCurrentCost() {
+    return parseFloat(dom.manufacture_cost.textContent.replace('$', ''));
+}
+export function getCurrentPrice() {
+    return parseInt(dom.price_slider.value);
+}
+export function getRecipeName() {
+    return dom.recipe_name_input.value;
+}
+export function getRecipeNameInput() {
+    return dom.recipe_name_input;
+}
+export function resetSliders() {
+    dom.vg_slider.value = 50;
+    dom.nicotine_slider.value = 3;
+    dom.cooling_slider.value = 0;
+    dom.price_slider.value = 20;
+}
+
+// --- 튜토리얼 UI ---
+export function renderTutorialTasks(gameState) {
+    if (!gameState.tutorial) return;
+    const allTasksCompleted = gameState.tutorial.tasks.every(t => t.completed);
+    dom.tutorial_section.classList.toggle('hidden', allTasksCompleted);
+    if (allTasksCompleted) return;
+
+    dom.task_list.innerHTML = gameState.tutorial.tasks.map(task => `
+        <li class="flex items-center ${task.completed ? 'text-gray-500 line-through' : ''}">
+            <span class="mr-2">${task.completed ? '✅' : '⬜️'}</span>
+            <span>${task.text}</span>
+        </li>
+    `).join('');
+}
+export function showMentorMessage(message, duration = 5000) {
+    dom.mentor_message.textContent = message;
+    dom.mentor_popup.classList.remove('hidden', 'animate-bounce');
+    void dom.mentor_popup.offsetWidth;
+    dom.mentor_popup.classList.add('animate-bounce');
+    setTimeout(() => {
+        dom.mentor_popup.classList.add('hidden');
+    }, duration);
+}
+export function hideTutorialSection() {
+    dom.tutorial_section.classList.add('hidden');
+}
+
+// --- 맛 프로파일 툴팁 ---
+export function showFlavorTooltip(e, flavors) {
+    const item = e.target.closest('.flavor-item');
+    if (!item) return;
+    const flavorName = item.dataset.flavorName;
+    const flavor = flavors.find(f => f.name === flavorName);
+    if (!flavor || !flavor.description) return;
+
+    dom.flavor_tooltip.innerHTML = `<strong>${flavor.name}</strong><p class="text-xs mt-1">${flavor.description}</p>`;
+    dom.flavor_tooltip.classList.remove('hidden');
+    
+    const rect = item.getBoundingClientRect();
+    const tooltipRect = dom.flavor_tooltip.getBoundingClientRect();
+    let left = e.clientX + 15;
+    let top = e.clientY + 15;
+    if (left + tooltipRect.width > window.innerWidth) {
+        left = e.clientX - tooltipRect.width - 15;
+    }
+    if (top + tooltipRect.height > window.innerHeight) {
+        top = e.clientY - tooltipRect.height - 15;
+    }
+    dom.flavor_tooltip.style.left = `${left}px`;
+    dom.flavor_tooltip.style.top = `${top}px`;
+}
+export function hideFlavorTooltip() {
+    dom.flavor_tooltip.classList.add('hidden');
 }
