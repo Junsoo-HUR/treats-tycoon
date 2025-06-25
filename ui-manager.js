@@ -1,24 +1,29 @@
-import { FLAVORS, TUTORIAL } from './game-data.js';
+import { FLAVORS } from './game-data.js';
 
-const dom = {};
+// dom 객체를 다른 모듈(main.js)에서 사용할 수 있도록 export 합니다.
+export const dom = {};
 
 export function cacheDOM(ids) {
     ids.forEach(id => {
-        if (document.getElementById(id)) {
-            dom[id.replace(/-/g, '_')] = document.getElementById(id);
+        const element = document.getElementById(id);
+        if (element) {
+            // id에 포함된 하이픈(-)을 언더스코어(_)로 바꿔서 키로 사용합니다. (예: 'login-container' -> 'login_container')
+            dom[id.replace(/-/g, '_')] = element;
         }
     });
 }
 
 // --- 화면 전환 함수 ---
 export function showLoginScreen() {
-    dom.login_container.classList.remove('hidden');
-    dom.login_container.classList.add('flex');
-    dom.game_container.classList.add('hidden');
+    if (dom.login_container && dom.game_container) {
+        dom.login_container.classList.remove('hidden');
+        dom.login_container.classList.add('flex');
+        dom.game_container.classList.add('hidden');
+    }
 }
 
 export function showGameScreen(user) {
-    if (!user) return;
+    if (!user || !dom.user_email || !dom.login_container || !dom.game_container) return;
     dom.user_email.textContent = user.isAnonymous ? '게스트' : user.email;
     dom.login_container.classList.add('hidden');
     dom.login_container.classList.remove('flex');
@@ -27,10 +32,10 @@ export function showGameScreen(user) {
 
 // --- 인증 UI 함수 ---
 export function showAuthError(message) {
-    if(dom.auth_error) dom.auth_error.textContent = message;
+    if (dom.auth_error) dom.auth_error.textContent = message;
 }
 export function clearAuthError() {
-    if(dom.auth_error) dom.auth_error.textContent = '';
+    if (dom.auth_error) dom.auth_error.textContent = '';
 }
 export function getAuthInput() {
     return { email: dom.email_input.value, password: dom.password_input.value };
@@ -45,24 +50,24 @@ export function handleAuthError(error) {
         case 'auth/operation-not-allowed': errorMessage = '이메일 로그인이 활성화되지 않았습니다.'; break;
         default: errorMessage = `오류: ${error.code}`; break;
     }
-    dom.auth_error.textContent = errorMessage;
+    if (dom.auth_error) dom.auth_error.textContent = errorMessage;
 }
 
 // --- 팝업 관리 함수 ---
 export function openPopup(popupElement) {
-    popupElement.classList.replace('hidden', 'flex');
+    if (popupElement) popupElement.classList.replace('hidden', 'flex');
 }
 
 export function closePopup(popupElement) {
-    popupElement.classList.replace('flex', 'hidden');
+    if (popupElement) popupElement.classList.replace('flex', 'hidden');
 }
 
 // --- 메인 UI 렌더링 함수 ---
 export function updateAllUI(gameState) {
-    if (!gameState || !Object.keys(gameState).length) return;
+    if (!gameState || Object.keys(gameState).length === 0) return;
     dom.cash.textContent = `$${Math.round(gameState.cash)}`;
     dom.monthly_sales.textContent = `$${Math.round(gameState.monthlySales)}`;
-    dom.best_recipe_name.textContent = gameState.bestRecipe.name;
+    dom.best_recipe_name.textContent = gameState.bestRecipe.name || '-';
     const skillLevel = Math.floor(Math.log10(gameState.skillExp / 100 + 1)) + 1;
     gameState.companyLevel = Math.floor(Math.log2((gameState.cash + gameState.monthlySales * 10) / 1000 + 1)) + 1;
     dom.company_level.textContent = gameState.companyLevel;
@@ -73,6 +78,7 @@ export function updateAllUI(gameState) {
 }
 
 export function renderUpgrades(gameState) {
+    if (!dom.upgrades_container) return;
     dom.upgrades_container.innerHTML = Object.keys(gameState.upgrades).map(key => {
         const upg = gameState.upgrades[key];
         const canAfford = gameState.cash >= upg.cost;
@@ -91,6 +97,7 @@ export function renderUpgrades(gameState) {
 }
 
 export function renderLeaderboard(players, isGuest, currentUserId, isError = false) {
+    if (!dom.leaderboard_content) return;
     if (isGuest) {
         dom.leaderboard_content.innerHTML = '<p class="text-center text-gray-400 p-4">리더보드는<br>이메일로 로그인 후<br>이용 가능합니다.</p>';
         return;
@@ -104,7 +111,8 @@ export function renderLeaderboard(players, isGuest, currentUserId, isError = fal
         return;
     }
     dom.leaderboard_content.innerHTML = players.map((data, index) => {
-        return `<div class="flex justify-between items-center p-2 rounded ${data.uid === currentUserId ? 'bg-indigo-500' : ''}"><div class="flex items-center"><span class="font-bold w-6">${index + 1}.</span><span class="truncate">${data.email || '익명'}</span></div><span class="font-bold text-green-400">$${Math.round(data.monthlySales || 0)}</span></div>`;
+        const isCurrentUser = data.uid === currentUserId;
+        return `<div class="flex justify-between items-center p-2 rounded ${isCurrentUser ? 'bg-indigo-500' : ''}"><div class="flex items-center"><span class="font-bold w-6">${index + 1}.</span><span class="truncate">${data.email || '익명'}</span></div><span class="font-bold text-green-400">$${Math.round(data.monthlySales || 0)}</span></div>`;
     }).join('');
 }
 
@@ -112,20 +120,30 @@ export function logMessage(message, type = 'info') {
     if (!dom.log) return;
     if (dom.log.children.length > 50) dom.log.removeChild(dom.log.lastChild);
     const div = document.createElement('div');
-    const typeClasses = { game: '', error: 'text-red-400 font-bold p-2 text-center', system: 'text-blue-300 italic p-2 text-center', trend: 'text-yellow-300 font-bold p-2 text-center bg-yellow-900/50 rounded-lg' };
-    if (type === 'game') div.innerHTML = message;
-    else { div.textContent = message; div.className = typeClasses[type] || 'text-gray-400'; }
+    const typeClasses = {
+        game: '',
+        error: 'text-red-400 font-bold p-2 text-center',
+        system: 'text-blue-300 italic p-2 text-center',
+        trend: 'text-yellow-300 font-bold p-2 text-center bg-yellow-900/50 rounded-lg'
+    };
+    if (type === 'game') {
+        div.innerHTML = message;
+    } else {
+        div.textContent = message;
+        div.className = typeClasses[type] || 'text-gray-400';
+    }
     dom.log.prepend(div);
 }
 
 // --- 제조 관련 UI ---
 export function renderFlavorGrid(isTutorial, onFlavorClick, onMouseOver, onMouseOut) {
+    if (!dom.flavor_grid) return;
     dom.flavor_grid.innerHTML = FLAVORS.map(f => {
         const disabled = isTutorial && !['딸기', '바나나'].includes(f.name);
         return `<div class="flavor-item flex flex-col items-center justify-center p-2 bg-gray-700 rounded-lg ${disabled ? 'opacity-50 cursor-not-allowed' : ''}" data-flavor-name="${f.name}">
             <span class="text-2xl pointer-events-none">${f.icon}</span>
             <span class="text-xs mt-1 text-center pointer-events-none">${f.name}</span>
-        </div>`
+        </div>`;
     }).join('');
     dom.flavor_grid.addEventListener('click', onFlavorClick);
     dom.flavor_grid.addEventListener('mouseover', onMouseOver);
@@ -133,6 +151,7 @@ export function renderFlavorGrid(isTutorial, onFlavorClick, onMouseOver, onMouse
 }
 
 export function updateFlavorGridSelection(tempSelectedFlavors) {
+    if (!dom.flavor_grid) return;
     const allItems = dom.flavor_grid.querySelectorAll('.flavor-item');
     allItems.forEach(item => {
         item.classList.toggle('selected', tempSelectedFlavors.includes(item.dataset.flavorName));
@@ -140,6 +159,7 @@ export function updateFlavorGridSelection(tempSelectedFlavors) {
 }
 
 export function updateSelectedFlavorsDisplay(selectedFlavors) {
+    if (!dom.selected_flavors_display) return;
     if (selectedFlavors.length === 0) {
         dom.selected_flavors_display.innerHTML = '<span class="text-gray-500 italic">버튼을 눌러 향료를 선택하세요...</span>';
         return;
@@ -151,6 +171,7 @@ export function updateSelectedFlavorsDisplay(selectedFlavors) {
 }
 
 export function renderIndividualFlavorSliders(selectedFlavors, onSliderChange) {
+    if (!dom.individual_flavor_sliders) return;
     dom.individual_flavor_sliders.innerHTML = selectedFlavors.map(name => `
         <div>
             <label for="flavor-slider-${name}" class="flex justify-between text-xs"><span>${name}</span><span id="flavor-value-${name}" class="font-bold text-indigo-300">5%</span></label>
@@ -163,23 +184,26 @@ export function renderIndividualFlavorSliders(selectedFlavors, onSliderChange) {
 }
 
 export function showRecipeCreationSteps(show) {
-    dom.ratio_section.classList.toggle('hidden', !show);
-    dom.naming_section.classList.toggle('hidden', !show);
-    dom.pricing_section.classList.toggle('hidden', !show);
-    dom.summary_section.classList.toggle('hidden', !show);
-    dom.create_batch_btn.disabled = !show;
+    const sections = [dom.ratio_section, dom.naming_section, dom.pricing_section, dom.summary_section];
+    sections.forEach(section => {
+        if (section) section.classList.toggle('hidden', !show);
+    });
+    if (dom.create_batch_btn) dom.create_batch_btn.disabled = !show;
 }
 
-export function updateRecipeAndCost(gameState, onSliderChange) {
+export function updateRecipeAndCost(gameState) {
     if (!gameState.recipe) return;
     const values = getCurrentRecipeValues();
     let totalFlavorPerc = 0;
+
     document.querySelectorAll('.flavor-ratio-slider').forEach(slider => {
         const perc = parseInt(slider.value);
         totalFlavorPerc += perc;
         values.flavorRatios[slider.dataset.flavorName] = perc;
-        document.getElementById(`flavor-value-${slider.dataset.flavorName}`).textContent = `${perc}%`;
+        const valueDisplay = document.getElementById(`flavor-value-${slider.dataset.flavorName}`);
+        if (valueDisplay) valueDisplay.textContent = `${perc}%`;
     });
+
     values.pg = 100 - values.vg - totalFlavorPerc;
 
     dom.vg_value.textContent = `${values.vg}%`;
@@ -207,8 +231,8 @@ export function updateManufactureButton(gameState) {
         dom.create_batch_btn.textContent = '일일 제조 횟수 소진';
         dom.create_batch_btn.disabled = true;
     } else {
-        const cost = dom.manufacture_cost.textContent;
-        dom.create_batch_btn.innerHTML = `제조 및 판매 (${remaining}회 남음) (비용: <span id="manufacture-cost">${cost}</span>)`;
+        const costText = dom.manufacture_cost ? dom.manufacture_cost.textContent : '$0';
+        dom.create_batch_btn.innerHTML = `제조 및 판매 (${remaining}회 남음) (비용: <span id="manufacture-cost">${costText}</span>)`;
     }
 }
 
@@ -225,9 +249,6 @@ export function getCurrentRecipeValues() {
 export function getCurrentCost() {
     return parseFloat(dom.manufacture_cost.textContent.replace('$', ''));
 }
-export function getCurrentPrice() {
-    return parseInt(dom.price_slider.value);
-}
 export function getRecipeName() {
     return dom.recipe_name_input.value;
 }
@@ -243,7 +264,7 @@ export function resetSliders() {
 
 // --- 튜토리얼 UI ---
 export function renderTutorialTasks(gameState) {
-    if (!gameState.tutorial) return;
+    if (!gameState.tutorial || !dom.tutorial_section) return;
     const allTasksCompleted = gameState.tutorial.tasks.every(t => t.completed);
     dom.tutorial_section.classList.toggle('hidden', allTasksCompleted);
     if (allTasksCompleted) return;
@@ -256,22 +277,23 @@ export function renderTutorialTasks(gameState) {
     `).join('');
 }
 export function showMentorMessage(message, duration = 5000) {
+    if (!dom.mentor_message || !dom.mentor_popup) return;
     dom.mentor_message.textContent = message;
     dom.mentor_popup.classList.remove('hidden', 'animate-bounce');
-    void dom.mentor_popup.offsetWidth;
+    void dom.mentor_popup.offsetWidth; // 리플로우 강제
     dom.mentor_popup.classList.add('animate-bounce');
     setTimeout(() => {
         dom.mentor_popup.classList.add('hidden');
     }, duration);
 }
 export function hideTutorialSection() {
-    dom.tutorial_section.classList.add('hidden');
+    if (dom.tutorial_section) dom.tutorial_section.classList.add('hidden');
 }
 
 // --- 맛 프로파일 툴팁 ---
 export function showFlavorTooltip(e, flavors) {
     const item = e.target.closest('.flavor-item');
-    if (!item) return;
+    if (!item || !dom.flavor_tooltip) return;
     const flavorName = item.dataset.flavorName;
     const flavor = flavors.find(f => f.name === flavorName);
     if (!flavor || !flavor.description) return;
@@ -279,7 +301,6 @@ export function showFlavorTooltip(e, flavors) {
     dom.flavor_tooltip.innerHTML = `<strong>${flavor.name}</strong><p class="text-xs mt-1">${flavor.description}</p>`;
     dom.flavor_tooltip.classList.remove('hidden');
     
-    const rect = item.getBoundingClientRect();
     const tooltipRect = dom.flavor_tooltip.getBoundingClientRect();
     let left = e.clientX + 15;
     let top = e.clientY + 15;
@@ -293,5 +314,52 @@ export function showFlavorTooltip(e, flavors) {
     dom.flavor_tooltip.style.top = `${top}px`;
 }
 export function hideFlavorTooltip() {
-    dom.flavor_tooltip.classList.add('hidden');
+    if (dom.flavor_tooltip) dom.flavor_tooltip.classList.add('hidden');
+}
+
+// --- 이벤트 리스너 등록 함수 (오류 수정) ---
+export function addAuthEventListeners(onLogin, onSignup, onGuestLogin) {
+    if (dom.login_btn) dom.login_btn.addEventListener('click', onLogin);
+    if (dom.signup_btn) dom.signup_btn.addEventListener('click', onSignup);
+    if (dom.guest_login_btn) dom.guest_login_btn.addEventListener('click', onGuestLogin);
+}
+
+export function addCommonEventListeners(
+    onOpenFlavorPopup,
+    onConfirmFlavorSelection,
+    onCreateBatch,
+    onBuyUpgrade,
+    onOpenLeaderboard,
+    onCloseLeaderboard,
+    onMainSliderChange,
+    onLogout
+) {
+    // 팝업 버튼
+    if (dom.open_flavor_popup_btn) dom.open_flavor_popup_btn.addEventListener('click', onOpenFlavorPopup);
+    if (dom.close_flavor_popup_btn) dom.close_flavor_popup_btn.addEventListener('click', () => closePopup(dom.flavor_popup));
+    if (dom.confirm_flavor_selection_btn) dom.confirm_flavor_selection_btn.addEventListener('click', onConfirmFlavorSelection);
+    
+    if (dom.open_leaderboard_popup_btn) dom.open_leaderboard_popup_btn.addEventListener('click', onOpenLeaderboard);
+    if (dom.close_leaderboard_popup_btn) dom.close_leaderboard_popup_btn.addEventListener('click', onCloseLeaderboard);
+    if (dom.close_mentor_popup_btn) dom.close_mentor_popup_btn.addEventListener('click', () => dom.mentor_popup.classList.add('hidden'));
+
+    // 메인 게임 동작 버튼
+    if (dom.create_batch_btn) dom.create_batch_btn.addEventListener('click', onCreateBatch);
+    if (dom.logout_btn) dom.logout_btn.addEventListener('click', onLogout);
+    
+    // 메인 슬라이더 (VG, 니코틴 등)
+    const mainSliders = [dom.vg_slider, dom.nicotine_slider, dom.cooling_slider, dom.price_slider];
+    mainSliders.forEach(slider => {
+        if (slider) slider.addEventListener('input', onMainSliderChange);
+    });
+
+    // 동적으로 생성되는 업그레이드 버튼 처리
+    if (dom.upgrades_container) {
+        dom.upgrades_container.addEventListener('click', (e) => {
+            const button = e.target.closest('button[data-key]');
+            if (button) {
+                onBuyUpgrade(button.dataset.key);
+            }
+        });
+    }
 }
