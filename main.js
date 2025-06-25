@@ -77,8 +77,7 @@ async function handleAuth(action, credentials) {
         if (action === 'login') {
             await signInWithEmailAndPassword(auth, credentials.email, credentials.password);
         } else if (action === 'signup') {
-            const userCredential = await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
-            // 새 유저 데이터는 onAuthStateChanged에서 loadGameData를 통해 생성
+            await createUserWithEmailAndPassword(auth, credentials.email, credentials.password);
         } else if (action === 'guest') {
             await signInAnonymously(auth);
         }
@@ -108,7 +107,6 @@ async function loadGameData(user) {
             gameState.lastLoginMonth = currentMonth;
         }
     } else {
-        // 새 유저인 경우 기본 데이터 생성 후 저장
         gameState = getBaseGameState(user);
         await saveGameData();
     }
@@ -164,7 +162,6 @@ function initGame(user) {
 
 // 모든 이벤트 리스너 등록
 function addEventListeners() {
-    // VG, 니코틴 등 메인 슬라이더 값이 바뀔 때마다 UI를 업데이트하는 함수
     const handleMainSliderChange = () => {
         if (gameState.recipe) {
             UIManager.updateRecipeAndCost(gameState);
@@ -230,14 +227,14 @@ function confirmFlavorSelection() {
         flavorRatios: {}
     };
     tempSelectedFlavors.forEach(name => {
-        gameState.recipe.flavorRatios[name] = 5; // 기본값 5%
+        gameState.recipe.flavorRatios[name] = 5;
     });
     UIManager.closePopup(UIManager.dom.flavor_popup);
     UIManager.updateSelectedFlavorsDisplay(gameState.recipe.selectedFlavors);
     UIManager.renderIndividualFlavorSliders(gameState.recipe.selectedFlavors, () => UIManager.updateRecipeAndCost(gameState));
     UIManager.updateRecipeAndCost(gameState);
     UIManager.showRecipeCreationSteps(true);
-    checkTutorial(1);
+    checkTutorial(); // 튜토리얼 진행도 체크
 }
 
 // 액상 제조 및 판매
@@ -307,6 +304,9 @@ async function createAndSellBatch() {
     checkAndSetMarketTrend();
     resetRecipeMaker();
     UIManager.updateAllUI(gameState);
+    
+    checkTutorial(); // 튜토리얼 진행도 체크
+    
     await saveGameData();
 }
 
@@ -342,7 +342,7 @@ function calculateRecipeQualityScore() {
 
 // 최종 점수 계산
 function calculateFinalScore(recipeName, qualityScore) {
-    const { nicotine, flavorRatios } = UIManager.getCurrentRecipeValues();
+    const { flavorRatios } = UIManager.getCurrentRecipeValues();
     const flavorNames = new Set(Object.keys(flavorRatios));
     let isEasterEgg = false, easterEggBonus = 1.0, qualityText = '';
 
@@ -410,21 +410,36 @@ function resetRecipeMaker() {
     UIManager.getRecipeNameInput().value = '';
 }
 
-// 튜토리얼 진행도 확인
-function checkTutorial(taskId = 0) {
-    if (!gameState.tutorial || gameState.tutorial.tasks.every(t => t.completed)) return;
+// 튜토리얼 진행도 확인 (개선된 로직)
+function checkTutorial() {
+    const tutorial = gameState.tutorial;
+    if (!tutorial || tutorial.tasks.every(t => t.completed)) {
+        return;
+    }
 
-    if (taskId === 1 && !gameState.tutorial.tasks[0].completed) {
+    // 1단계: 향료 선택 (완료되지 않았고, 레시피가 생성되었다면 완료 처리)
+    if (!tutorial.tasks[0].completed && gameState.recipe && gameState.recipe.selectedFlavors.length > 0) {
         completeTutorialTask(0);
-    } else if (!gameState.tutorial.introSeen) {
+    }
+    // 2단계: 액상 제조 (1단계가 끝났고, 아직 2단계가 끝나지 않았으며, 제조 횟수가 1 이상이면 완료 처리)
+    else if (tutorial.tasks[0].completed && !tutorial.tasks[1].completed && gameState.dailyManufactureCount > 0) {
+        completeTutorialTask(1);
+    }
+    // 3단계: 월간 매출 $1000 달성 (2단계가 끝났고, 3단계가 끝나지 않았으며, 매출이 1000 이상이면 완료 처리)
+    else if (tutorial.tasks[1].completed && !tutorial.tasks[2].completed && gameState.monthlySales >= 1000) {
+        completeTutorialTask(2);
+    }
+    // 튜토리얼 시작 메시지 (위 조건에 아무것도 해당하지 않고, 인트로를 본 적이 없다면)
+    else if (!tutorial.introSeen) {
         UIManager.showMentorMessage(TUTORIAL.messages[0]);
-        gameState.tutorial.introSeen = true;
+        tutorial.introSeen = true;
     }
 }
 
 // 튜토리얼 과제 완료
 async function completeTutorialTask(taskIndex) {
-    if (gameState.tutorial.tasks[taskIndex].completed) return;
+    if (!gameState.tutorial.tasks[taskIndex] || gameState.tutorial.tasks[taskIndex].completed) return;
+    
     gameState.tutorial.tasks[taskIndex].completed = true;
     const reward = TUTORIAL.tasks[taskIndex].reward;
     if (reward) {
