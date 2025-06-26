@@ -137,7 +137,8 @@ async function saveGameData() {
 
 // 주문 생성 및 확인 함수
 function generateNewOrder() {
-    if (gameState.activeOrder === null) {
+    // 40% 확률로만 새로운 주문이 생성되도록 수정
+    if (gameState.activeOrder === null && Math.random() < 0.4) {
         const criteriaCount = Math.floor(Math.random() * 2) + 1; // 1~2개의 조건 조합
         const selectedParts = [];
         const finalCriteria = {};
@@ -459,7 +460,7 @@ function checkAndSetMarketTrend() {
             gameState.marketTrend.category = null;
             UIManager.logMessage('🔔 시장 트렌드가 초기화되었습니다.', 'system');
         }
-    } else if (Math.random() < 0.2) {
+    } else if (Math.random() < 0.1) { // 발생 확률 20% -> 10%
         const trendCategories = ['과일', '디저트', '멘솔', '음료', '연초', '특별'];
         gameState.marketTrend.category = trendCategories[Math.floor(Math.random() * trendCategories.length)];
         gameState.marketTrend.duration = 5;
