@@ -276,16 +276,16 @@ export function renderTutorialTasks(gameState) {
         </li>
     `).join('');
 }
-export function showMentorMessage(message, duration = 5000) {
+
+export function showMentorMessage(message) { // duration 인자 제거
     if (!dom.mentor_message || !dom.mentor_popup) return;
     dom.mentor_message.textContent = message;
     dom.mentor_popup.classList.remove('hidden', 'animate-bounce');
-    void dom.mentor_popup.offsetWidth;
+    void dom.mentor_popup.offsetWidth; // 리플로우 강제
     dom.mentor_popup.classList.add('animate-bounce');
-    setTimeout(() => {
-        dom.mentor_popup.classList.add('hidden');
-    }, duration);
+    // setTimeout 코드가 제거되어 자동으로 사라지지 않습니다.
 }
+
 export function hideTutorialSection() {
     if (dom.tutorial_section) dom.tutorial_section.classList.add('hidden');
 }
