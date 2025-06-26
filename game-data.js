@@ -104,6 +104,7 @@ export const FLAVORS = [
 ];
 
 export const CRAFTING_RECIPES = {
+    '킥 카카오': { ingredients: ['RY4', '카카오닙스'], bonus: 1.6, type: '연초' },
     '포카리스웨트': { ingredients: ['자몽', '꿀', '소금'], bonus: 1.7, type: '음료' },
     '시나몬 콜라': { ingredients: ['시나몬', '콜라', '라임'], bonus: 1.5, type: '음료' },
     '진토닉': { ingredients: ['진', '라임', '토닉워터'], bonus: 1.6, type: '음료' },
