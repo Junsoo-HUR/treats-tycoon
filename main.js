@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, orderBy, limit, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 import { firebaseConfig, FLAVORS, SYNERGY_SCORES, CONFLICT_SCORES, CRAFTING_RECIPES, TUTORIAL, DOM_IDS, ORDER_CRITERIA } from './game-data.js';
 import * as UIManager from './ui-manager.js';
 
@@ -96,15 +96,20 @@ async function loadGameData(user) {
     if (docSnap.exists()) {
         gameState = docSnap.data();
 
-        // ✨ 변경된 부분: 게스트가 아니고 DB 이메일이 실제 이메일과 다를 경우, 최신 정보로 업데이트합니다.
+        // 이메일 업데이트 로직을 더 안정적인 방식으로 수정합니다.
         if (!user.isAnonymous && gameState.email !== user.email) {
+            console.log(`Email mismatch found. Updating DB from '${gameState.email}' to '${user.email}'.`);
+            // 게임 상태 전체를 저장하는 대신, 'email' 필드만 직접 업데이트합니다.
+            await updateDoc(userDocRef, {
+                email: user.email
+            });
+            // 로컬 gameState에도 변경사항을 반영합니다.
             gameState.email = user.email;
-            await saveGameData(); // 변경사항을 즉시 저장
         }
         
     } else {
         gameState = getBaseGameState(user);
-        await saveGameData();
+        await setDoc(userDocRef, gameState, { merge: true });
     }
 
     const today = new Date().toLocaleDateString('ko-KR');
