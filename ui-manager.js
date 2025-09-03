@@ -1,21 +1,23 @@
 import { FLAVORS } from './game-data.js';
+// ✨ 1. onSnapshot 함수를 Firestore에서 가져옵니다.
+import { onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // dom 객체를 다른 모듈(main.js)에서 사용할 수 있도록 export 합니다.
 export const dom = {};
 
-// ✨ 실시간 리더보드 리스너를 관리하기 위한 변수
+// 실시간 리더보드 리스너를 관리하기 위한 변수
 let unsubscribeLeaderboard = null;
 
 export function cacheDOM(ids) {
     ids.forEach(id => {
         const element = document.getElementById(id);
         if (element) {
-            // id에 포함된 하이픈(-)을 언더스코어(_)로 바꿔서 키로 사용합니다. (예: 'login-container' -> 'login_container')
             dom[id.replace(/-/g, '_')] = element;
         }
     });
 }
 
+// (이하 다른 함수들은 모두 동일합니다)
 // --- 화면 전환 함수 ---
 export function showLoginScreen() {
     if (dom.login_container && dom.game_container) {
@@ -99,11 +101,8 @@ export function renderUpgrades(gameState) {
     }).join('');
 }
 
-// ==========================================================
-// ✨ 실시간 리더보드 관련 함수 (신규/수정) ✨
-// ==========================================================
+// --- 리더보드 관련 함수 ---
 
-// 1. 기존 리더보드 렌더링 함수는 그대로 사용합니다. UI만 담당합니다.
 export function renderLeaderboard(players, isGuest, currentUserId, isError = false) {
     if (!dom.leaderboard_content) return;
     if (isGuest) {
@@ -124,41 +123,37 @@ export function renderLeaderboard(players, isGuest, currentUserId, isError = fal
     }).join('');
 }
 
-// 2. 실시간으로 리더보드를 감지하고 렌더링하는 새 함수
 export function listenAndRenderLeaderboard(query, isGuest, currentUserId) {
     if (isGuest) {
         renderLeaderboard(null, true, null);
         return;
     }
 
-    // 이전에 등록된 리스너가 있다면 중복 실행을 막기 위해 해제합니다.
     if (unsubscribeLeaderboard) {
         unsubscribeLeaderboard();
     }
 
-    // onSnapshot을 사용해 실시간으로 데이터 변경을 감지합니다.
-    unsubscribeLeaderboard = query.onSnapshot((querySnapshot) => {
+    // ✨ 2. 올바른 문법인 onSnapshot(query, ...)로 수정합니다.
+    unsubscribeLeaderboard = onSnapshot(query, (querySnapshot) => {
         const players = [];
         querySnapshot.forEach((doc) => {
-            // Firestore 문서에는 uid가 없으므로 doc.id를 사용합니다.
             players.push({ uid: doc.id, ...doc.data() });
         });
         renderLeaderboard(players, false, currentUserId);
     }, (error) => {
         console.error("실시간 리더보드 오류:", error);
-        renderLeaderboard(null, false, null, true); // 에러 발생 시 에러 화면 표시
+        renderLeaderboard(null, false, null, true);
     });
 }
 
-// 3. 리더보드 팝업을 닫을 때 실시간 감지를 중지하는 함수 (메모리 관리)
 export function stopListeningToLeaderboard() {
     if (unsubscribeLeaderboard) {
-        unsubscribeLeaderboard(); // 리스너 해제
+        unsubscribeLeaderboard();
         unsubscribeLeaderboard = null;
     }
 }
 
-// ==========================================================
+// --- 이하 모든 함수는 기존과 동일합니다 ---
 
 export function logMessage(message, type = 'info') {
     if (!dom.log) return;
@@ -179,7 +174,6 @@ export function logMessage(message, type = 'info') {
     dom.log.prepend(div);
 }
 
-// --- 제조 관련 UI ---
 export function renderFlavorGrid(isTutorial, onFlavorClick, onMouseOver, onMouseOut) {
     if (!dom.flavor_grid) return;
     dom.flavor_grid.innerHTML = FLAVORS.map(f => {
@@ -306,7 +300,6 @@ export function resetSliders() {
     dom.price_slider.value = 20;
 }
 
-// --- 튜토리얼 UI ---
 export function renderTutorialTasks(gameState) {
     if (!gameState.tutorial || !dom.tutorial_section) return;
     const allTasksCompleted = gameState.tutorial.tasks.every(t => t.completed);
@@ -321,20 +314,18 @@ export function renderTutorialTasks(gameState) {
     `).join('');
 }
 
-export function showMentorMessage(message) { // duration 인자 제거
+export function showMentorMessage(message) {
     if (!dom.mentor_message || !dom.mentor_popup) return;
     dom.mentor_message.textContent = message;
     dom.mentor_popup.classList.remove('hidden', 'animate-bounce');
-    void dom.mentor_popup.offsetWidth; // 리플로우 강제
+    void dom.mentor_popup.offsetWidth;
     dom.mentor_popup.classList.add('animate-bounce');
-    // setTimeout 코드가 제거되어 자동으로 사라지지 않습니다.
 }
 
 export function hideTutorialSection() {
     if (dom.tutorial_section) dom.tutorial_section.classList.add('hidden');
 }
 
-// --- 맛 프로파일 툴팁 ---
 export function showFlavorTooltip(e, flavors) {
     const item = e.target.closest('.flavor-item');
     if (!item || !dom.flavor_tooltip) return;
@@ -361,7 +352,6 @@ export function hideFlavorTooltip() {
     if (dom.flavor_tooltip) dom.flavor_tooltip.classList.add('hidden');
 }
 
-// --- 주문 시스템 UI ---
 export function renderCustomerOrder(order) {
     if (dom.customer_order) {
         if (order) {
@@ -372,7 +362,6 @@ export function renderCustomerOrder(order) {
     }
 }
 
-// --- 이벤트 리스너 등록 함수 ---
 export function addAuthEventListeners(onLogin, onSignup, onGuestLogin) {
     if (dom.login_btn) dom.login_btn.addEventListener('click', onLogin);
     if (dom.signup_btn) dom.signup_btn.addEventListener('click', onSignup);
