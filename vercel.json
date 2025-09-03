@@ -1,9 +1,10 @@
+// vercel.json
 {
   "framework": null,
   "crons": [
     {
       "path": "/api/monthly-reset",
-      "schedule": "0 0 1 * *"
+      "schedule": "* * * * *" // "매월 1일" -> "매분마다"로 임시 변경
     }
   ]
 }
