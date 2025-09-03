@@ -7,7 +7,6 @@ import * as UIManager from './ui-manager.js';
 let db, auth;
 let gameState = {};
 let currentUser = null;
-// ✨ 변경점: 전역 unsubscribe 변수가 ui-manager로 이동했으므로 여기서 삭제합니다.
 let tempSelectedFlavors = [];
 
 // Firebase 초기화
@@ -60,7 +59,6 @@ if (auth) {
         } else {
             currentUser = null;
             UIManager.showLoginScreen();
-            // ✨ 변경점: 로그아웃 시 ui-manager의 리스너 중지 함수를 호출합니다.
             UIManager.stopListeningToLeaderboard();
         }
     });
@@ -97,16 +95,13 @@ async function loadGameData(user) {
 
     if (docSnap.exists()) {
         gameState = docSnap.data();
-        const currentMonth = new Date().getMonth();
-        // 월간 초기화 로직은 서버(Cron Job)에서 처리하므로 클라이언트에서는 삭제하거나 주석 처리합니다.
-        /* if (gameState.lastLoginMonth !== currentMonth) {
-            UIManager.logMessage('새로운 달이 시작되었습니다! 월간 매출과 회사 업그레이드가 초기화됩니다.', 'system');
-            const baseState = getBaseGameState(user);
-            gameState.monthlySales = baseState.monthlySales;
-            gameState.upgrades = baseState.upgrades;
-            gameState.lastLoginMonth = currentMonth;
-        }
-      */
+
+        // ✨ 변경된 부분: 게스트가 아니고 DB 이메일이 실제 이메일과 다를 경우, 최신 정보로 업데이트합니다.
+        if (!user.isAnonymous && gameState.email !== user.email) {
+            gameState.email = user.email;
+            await saveGameData(); // 변경사항을 즉시 저장
+        }
+        
     } else {
         gameState = getBaseGameState(user);
         await saveGameData();
@@ -135,23 +130,19 @@ async function saveGameData() {
     }
 }
 
-// 주문 생성 및 확인 함수 (기존과 동일)
+// 주문 생성 및 확인 함수
 function generateNewOrder() {
-    // 40% 확률로만 새로운 주문이 생성되도록 수정
     if (gameState.activeOrder === null && Math.random() < 0.4) {
-        const criteriaCount = Math.floor(Math.random() * 2) + 1; // 1~2개의 조건 조합
+        const criteriaCount = Math.floor(Math.random() * 2) + 1;
         const selectedParts = [];
         const finalCriteria = {};
         let finalText = "손님: ";
         
         const availableCategories = Object.keys(ORDER_CRITERIA);
-
         for (let i = 0; i < criteriaCount; i++) {
             if (availableCategories.length === 0) break;
-            
             const randomCategoryIndex = Math.floor(Math.random() * availableCategories.length);
             const categoryKey = availableCategories.splice(randomCategoryIndex, 1)[0];
-            
             const parts = ORDER_CRITERIA[categoryKey];
             const randomPart = parts[Math.floor(Math.random() * parts.length)];
             selectedParts.push(randomPart);
@@ -176,7 +167,6 @@ function generateNewOrder() {
 
 function checkOrderCompletion(recipe, order) {
     if (!order) return false;
-
     const criteria = order.criteria;
     const recipeCategories = new Set(recipe.selectedFlavors.map(name => FLAVORS.find(f => f.name === name).category));
     const values = UIManager.getCurrentRecipeValues();
@@ -189,28 +179,20 @@ function checkOrderCompletion(recipe, order) {
     if (criteria.cooling_min && values.cooling < criteria.cooling_min) return false;
     if (criteria.flavor_count_min && recipe.selectedFlavors.length < criteria.flavor_count_min) return false;
     if (criteria.flavor_count_max && recipe.selectedFlavors.length > criteria.flavor_count_max) return false;
-
     return true;
 }
-
-// ✨ 변경점: 리더보드 리스너 함수는 이제 필요 없으므로 삭제합니다.
-/*
-function listenToLeaderboard() { ... }
-*/
 
 // 게임 초기화
 function initGame(user) {
     UIManager.showGameScreen(user);
     UIManager.renderFlavorGrid(false, handleFlavorClick, handleFlavorMouseover, handleFlavorMouseout);
     UIManager.updateAllUI(gameState);
-    // ✨ 변경점: 게임 시작 시 리스너를 바로 실행하지 않으므로 해당 라인을 삭제합니다.
-    // listenToLeaderboard(); 
     checkTutorial();
     generateNewOrder();
     UIManager.renderCustomerOrder(gameState.activeOrder);
 }
 
-// ✨ 변경점: 리더보드를 열고 닫는 별도의 핸들러 함수를 정의합니다.
+// 리더보드를 열고 닫는 핸들러 함수
 function onOpenLeaderboard() {
     if (!currentUser) return;
 
@@ -228,7 +210,6 @@ function onCloseLeaderboard() {
     UIManager.closePopup(UIManager.dom.leaderboard_popup);
 }
 
-
 // 모든 이벤트 리스너 등록
 function addEventListeners() {
     const handleMainSliderChange = () => {
@@ -242,7 +223,6 @@ function addEventListeners() {
         confirmFlavorSelection,
         createAndSellBatch,
         buyUpgrade,
-        // ✨ 변경점: 위에서 만든 핸들러 함수를 연결합니다.
         onOpenLeaderboard,
         onCloseLeaderboard,
         handleMainSliderChange,
@@ -259,8 +239,6 @@ function addEventListeners() {
         () => handleAuth('guest')
     );
 }
-
-// (이하 모든 코드는 기존과 동일합니다)
 
 // 향료 선택 팝업 열기
 function openFlavorPopup() {
@@ -471,7 +449,7 @@ function checkAndSetMarketTrend() {
             gameState.marketTrend.category = null;
             UIManager.logMessage('🔔 시장 트렌드가 초기화되었습니다.', 'system');
         }
-    } else if (Math.random() < 0.1) { // 발생 확률 20% -> 10%
+    } else if (Math.random() < 0.1) {
         const trendCategories = ['과일', '디저트', '멘솔', '음료', '연초', '특별'];
         gameState.marketTrend.category = trendCategories[Math.floor(Math.random() * trendCategories.length)];
         gameState.marketTrend.duration = 5;
