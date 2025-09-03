@@ -1,3 +1,9 @@
 {
-  "framework": null
+  "framework": null,
+  "crons": [
+    {
+      "path": "/api/monthly-reset",
+      "schedule": "0 0 1 * *"
+    }
+  ]
 }
